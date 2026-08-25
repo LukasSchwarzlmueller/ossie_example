@@ -1,0 +1,34 @@
+[project]
+name = "ossie-example"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "apache-ossie",
+    "apache-ossie-databricks",
+]
+
+[tool.uv.sources]
+apache-ossie = { git = "https://github.com/apache/ossie", subdirectory = "python" }
+apache-ossie-databricks = { git = "https://github.com/apache/ossie", subdirectory = "converters/databricks" }
+apache-ossie-gsf = { git = "https://github.com/apache/ossie", subdirectory = "converters/gsf" }
+apache-ossie-snowflake = { git = "https://github.com/apache/ossie", subdirectory = "converters/snowflake" }
+osi-omni = { git = "https://github.com/apache/ossie", subdirectory = "converters/omni" }
+apache-ossie-gooddata = { git = "https://github.com/apache/ossie", subdirectory = "converters/gooddata" }
+honeydew-osi = { git = "https://github.com/apache/ossie", subdirectory = "converters/honeydew" }
+apache-ossie-wisdom = { git = "https://github.com/apache/ossie", subdirectory = "converters/wisdom" }
+
+[dependency-groups]
+dev = [
+    "apache-ossie-gooddata",
+    "apache-ossie-gsf",
+    "apache-ossie-snowflake",
+    "apache-ossie-wisdom",
+    "databricks-sdk>=0.133.0",
+    "dbt-core>=1.12.3",
+    "dbt-duckdb>=1.11.0",
+    "dbt-metricflow>=0.14.0",
+    "honeydew-osi",
+    "osi-omni",
+]

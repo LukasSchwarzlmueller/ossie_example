@@ -1,0 +1,12 @@
+name: ossie_demo
+version: "1.0.0"
+config-version: 2
+
+profile: ossie_demo
+
+model-paths: ["models"]
+osi-paths: ["ossie"]
+
+models:
+  ossie_demo:
+    +materialized: table

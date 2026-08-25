@@ -1,0 +1,180 @@
+{
+  "version": "0.1.1",
+  "semantic_model": [
+    {
+      "name": "sales_demo",
+      "description": "Minimal orders/customers demo model for the OSI meetup talk",
+      "datasets": [
+        {
+          "name": "customers",
+          "source": "ossie_demo.main.customers",
+          "primary_key": [
+            "customer_id"
+          ],
+          "description": "One row per customer",
+          "fields": [
+            {
+              "name": "customer_id",
+              "expression": {
+                "dialects": [
+                  {
+                    "dialect": "ANSI_SQL",
+                    "expression": "customer_id"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "customer_name",
+              "expression": {
+                "dialects": [
+                  {
+                    "dialect": "ANSI_SQL",
+                    "expression": "customer_name"
+                  }
+                ]
+              },
+              "label": "Customer Name"
+            },
+            {
+              "name": "customer_segment",
+              "expression": {
+                "dialects": [
+                  {
+                    "dialect": "ANSI_SQL",
+                    "expression": "customer_segment"
+                  }
+                ]
+              },
+              "label": "Customer Segment",
+              "dimension": {
+                "is_time": false
+              }
+            }
+          ]
+        },
+        {
+          "name": "orders",
+          "source": "ossie_demo.main.orders",
+          "primary_key": [
+            "order_id"
+          ],
+          "description": "One row per order, references customers via customer_id",
+          "fields": [
+            {
+              "name": "order_id",
+              "expression": {
+                "dialects": [
+                  {
+                    "dialect": "ANSI_SQL",
+                    "expression": "order_id"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "customer_id",
+              "expression": {
+                "dialects": [
+                  {
+                    "dialect": "ANSI_SQL",
+                    "expression": "customer_id"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "order_date",
+              "expression": {
+                "dialects": [
+                  {
+                    "dialect": "ANSI_SQL",
+                    "expression": "order_date"
+                  }
+                ]
+              },
+              "label": "Order Date",
+              "datatype": "Date",
+              "dimension": {
+                "is_time": true
+              }
+            },
+            {
+              "name": "order_amount",
+              "expression": {
+                "dialects": [
+                  {
+                    "dialect": "ANSI_SQL",
+                    "expression": "order_amount"
+                  }
+                ]
+              },
+              "label": "Order Amount",
+              "datatype": "Decimal"
+            }
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "name": "orders_to_customers",
+          "from": "orders",
+          "to": "customers",
+          "from_columns": [
+            "customer_id"
+          ],
+          "to_columns": [
+            "customer_id"
+          ]
+        }
+      ],
+      "metrics": [
+        {
+          "name": "total_revenue",
+          "expression": {
+            "dialects": [
+              {
+                "dialect": "ANSI_SQL",
+                "expression": "SUM(order_amount)"
+              }
+            ]
+          },
+          "description": "Total revenue across all orders",
+          "datatype": "Decimal",
+          "ai_context": {
+            "synonyms": [
+              "revenue",
+              "sales"
+            ]
+          }
+        },
+        {
+          "name": "order_count",
+          "expression": {
+            "dialects": [
+              {
+                "dialect": "ANSI_SQL",
+                "expression": "COUNT(*)"
+              }
+            ]
+          },
+          "description": "Number of orders",
+          "datatype": "Integer"
+        },
+        {
+          "name": "avg_order_value",
+          "expression": {
+            "dialects": [
+              {
+                "dialect": "ANSI_SQL",
+                "expression": "AVG(order_amount)"
+              }
+            ]
+          },
+          "description": "Average order value",
+          "datatype": "Decimal"
+        }
+      ]
+    }
+  ]
+}

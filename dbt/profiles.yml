@@ -1,0 +1,7 @@
+ossie_demo:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: target/ossie_demo.duckdb
+      schema: main

@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+target/
+logs/
+*.duckdb
+.user.yml
+.env
+databricks/metric_view.yaml
