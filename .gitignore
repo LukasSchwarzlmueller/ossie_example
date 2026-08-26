@@ -7,3 +7,4 @@ logs/
 .user.yml
 .env
 databricks/metric_view.yaml
+snowflake/semantic_model.yaml

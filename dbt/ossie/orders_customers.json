@@ -22,7 +22,8 @@
                     "expression": "customer_id"
                   }
                 ]
-              }
+              },
+              "datatype": "Integer"
             },
             {
               "name": "customer_name",
@@ -34,7 +35,8 @@
                   }
                 ]
               },
-              "label": "Customer Name"
+              "label": "Customer Name",
+              "datatype": "String"
             },
             {
               "name": "customer_segment",
@@ -47,6 +49,7 @@
                 ]
               },
               "label": "Customer Segment",
+              "datatype": "String",
               "dimension": {
                 "is_time": false
               }
@@ -70,7 +73,8 @@
                     "expression": "order_id"
                   }
                 ]
-              }
+              },
+              "datatype": "Integer"
             },
             {
               "name": "customer_id",
@@ -81,7 +85,8 @@
                     "expression": "customer_id"
                   }
                 ]
-              }
+              },
+              "datatype": "Integer"
             },
             {
               "name": "order_date",

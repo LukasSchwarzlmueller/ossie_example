@@ -1,4 +1,4 @@
-version: 0.2.0.dev0  # DIFF vs dbt: dbt requires "0.1.0"/"0.1.1" here, rejects this; Snowflake matches this value
+version: 0.2.0.dev0  # DIFF vs dbt: dbt requires "0.1.0"/"0.1.1" here, rejects this; Databricks matches this value
 semantic_model:
 - name: sales_demo
   description: Minimal orders/customers demo model for the OSI meetup talk
@@ -9,14 +9,11 @@ semantic_model:
     - customer_id
     description: One row per customer
     fields:
-    # DIFF vs dbt: no `customer_id` field here (kept only in primary_key
-    # above). dbt requires it present - its join inference needs matching
-    # entity names on both sides of the relationship. Databricks requires
-    # the opposite: adding it back collides with orders.customer_id once
-    # flattened into one dimension namespace - "Metric Views require unique
-    # dimension/measure names". Snowflake tolerates either (see the
-    # Snowflake copy's own comment here) - not a real 3-way conflict, just a
-    # 2-way one between dbt and Databricks.
+    # No `customer_id` field here (kept only in primary_key above) -
+    # structurally identical to the Databricks copy on this axis. See its
+    # comment here, and NOTES.md, for why (short version: Snowflake's
+    # actual deploy path tolerates either, dbt/Databricks don't agree with
+    # each other).
     - name: customer_name
       expression:
         dialects:
