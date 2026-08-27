@@ -1,4 +1,4 @@
-version: 0.2.0.dev0  # DIFF vs dbt: dbt requires "0.1.0"/"0.1.1" here, rejects this; Snowflake matches this value
+version: 0.2.0.dev0  # DIFF vs dbt: dbt requires "0.1.0"/"0.1.1" here, rejects this; Databricks matches this value
 semantic_model:
 - name: sales_demo
   description: Minimal orders/customers demo model for the OSI meetup talk
@@ -20,8 +20,12 @@ semantic_model:
     - name: customer_name
       expression:
         dialects:
-        - dialect: ANSI_SQL
-          expression: customer_name
+          - dialect: ANSI_SQL
+            expression: "UPPER(customer_name)"
+          - dialect: SNOWFLAKE
+            expression: "INITCAP(customer_name)"
+          - dialect: DATABRICKS
+            expression: "LOWER(customer_name)"
       label: Customer Name
       datatype: String
     - name: customer_segment

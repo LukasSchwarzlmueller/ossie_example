@@ -17,10 +17,12 @@ semantic_model:
     - name: customer_name
       expression:
         dialects:
-        - dialect: ANSI_SQL
-          expression: customer_name
-      label: Customer Name
-      datatype: String
+          - dialect: ANSI_SQL
+            expression: "UPPER(customer_name)"
+          - dialect: SNOWFLAKE
+            expression: "INITCAP(customer_name)"
+          - dialect: DATABRICKS
+            expression: "LOWER(customer_name)"
     - name: customer_segment
       expression:
         dialects:
