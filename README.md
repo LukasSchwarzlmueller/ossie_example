@@ -25,38 +25,26 @@ uv sync
 
 The model: `dbt/ossie/orders_customers.json`.
 
-Load it and confirm dbt recognizes the metrics:
-
 ```bash
 cd dbt
-DBT_PROFILES_DIR=. uv run dbt parse
-DBT_PROFILES_DIR=. uv run dbt --quiet list --resource-type metric
+uv run dbt run                                    # builds the tables, confirms the model loads
+uv run dbt list  
+uv run scripts/patch_manifest_for_mf_query.py      # works around the known bugs below - only needs re-running after dbt recompiles, see below
+uv run mf query --metrics total_revenue,avg_order_value --group-by customer_id__customer_segment
 cd ..
-```
-
-Query real metric values with one command (builds the tables, works
-around the known bugs below, then runs a real `mf query`):
-
-```bash
-uv run python3 dbt/run_demo_query.py
 ```
 
 ```
 customer_id__customer_segment      total_revenue    avg_order_value
 -------------------------------  ---------------  -----------------
-enterprise                                950.75            316.917
 smb                                        40                40
+enterprise                                950.75            316.917
 ```
 
-To query other metrics or dimensions yourself, run the same steps by hand:
-
-```bash
-cd dbt
-DBT_PROFILES_DIR=. uv run dbt run
-uv run python3 scripts/patch_manifest_for_mf_query.py   # re-run before EVERY query, see below
-DBT_PROFILES_DIR=. uv run mf list metrics                # shows each metric's valid group-bys
-DBT_PROFILES_DIR=. uv run mf query --metrics total_revenue --group-by customer_id__customer_segment
-```
+Same thing in one command, from the repo root: `uv run dbt/run_demo_query.py`
+(queries `total_revenue`/`avg_order_value` together). To query other
+metrics/dimensions, use `mf list metrics`/`mf query` directly as above —
+just re-run the patch step first if you've run any dbt command since.
 
 ### Known issues (dbt)
 
@@ -79,11 +67,13 @@ generated. It does **not** fix `order_count` fully: even patched,
 is only allowed as the root element`) — a separate code-generation bug.
 Query `total_revenue`/`avg_order_value` instead.
 
-**The patch doesn't stick.** It edits a generated file, and *any* dbt
-command that recompiles — `dbt run`, `dbt parse`, `dbt show`, `dbt docs
-generate` — regenerates that file from scratch and silently reverts it.
-Re-run `patch_manifest_for_mf_query.py` immediately before every
-`mf query`/`mf list` call, not just once after `dbt run`.
+**The patch doesn't stick across a recompile.** It edits a generated
+file, and *any* dbt command that recompiles — `dbt run`, `dbt parse`, `dbt
+show`, `dbt docs generate` — regenerates that file from scratch and
+silently reverts it. `mf list`/`mf query` themselves only *read* that
+file, so any number of them in a row is fine without re-patching — you
+only need to re-run `patch_manifest_for_mf_query.py` after you've run one
+of those four dbt commands again, right before your next `mf` call.
 
 ## Databricks
 
@@ -95,7 +85,7 @@ one, minus two required adjustments — see NOTES.md).
 Pure offline conversion, no workspace needed:
 
 ```bash
-uv run python3 databricks/export_metric_view.py
+uv run databricks/export_metric_view.py
 cat databricks/metric_view.yaml
 ```
 
@@ -106,7 +96,7 @@ are dropped, others repurposed — see NOTES.md for details).
 
 ```bash
 cp .env.example .env   # fill in DATABRICKS_HOST / DATABRICKS_TOKEN / DATABRICKS_WAREHOUSE_ID
-uv run python3 databricks/deploy_to_databricks.py
+uv run databricks/deploy_to_databricks.py
 ```
 
 | `.env` variable | Required | Notes |
@@ -130,9 +120,9 @@ Query the result with `MEASURE(name)` in the `SELECT` list — Metric Views
 have no `MEASURES` clause:
 
 ```sql
-SELECT customer_segment, MEASURE(total_revenue), MEASURE(avg_order_value)
+SELECT customer_segment, MEASURE(total_revenue), MEASURE(avg_order_value), MEASURE(order_count)
 FROM <catalog>.<schema>.<view_name>
-GROUP BY customer_segment
+GROUP BY ALL
 ```
 
 ## Snowflake
@@ -151,7 +141,7 @@ repo uses.
 Pure offline conversion, no Snowflake account needed:
 
 ```bash
-uv run python3 snowflake/export_semantic_model.py
+uv run snowflake/export_semantic_model.py
 cat snowflake/semantic_model.yaml
 ```
 
@@ -170,7 +160,7 @@ included, no AI/Cortex Analyst required to query it.
 ```bash
 uv add snowflake-connector-python   # not a project dependency yet
 cp .env.example .env   # fill in SNOWFLAKE_ACCOUNT / USER / PASSWORD
-uv run python3 snowflake/deploy_to_snowflake.py
+uv run snowflake/deploy_to_snowflake.py
 ```
 
 Creates `OSSIE_DEMO.PUBLIC.customers`/`orders` and
@@ -181,7 +171,7 @@ resources if you'd rather. Query it with plain SQL:
 ```sql
 SELECT * FROM SEMANTIC_VIEW(
   OSSIE_DEMO.PUBLIC.sales_demo
-  METRICS total_revenue, order_count, avg_order_value
+  METRICS total_revenue, avg_order_value, order_count
   DIMENSIONS customer_segment
 )
 ```
@@ -220,7 +210,7 @@ file — none of the three pairwise relationships is "zero changes":
 | `dimension.is_time` | Required (dbt's vendored schema, stricter than Ossie's own, which makes it optional) | No equivalent field — silently dropped, cosmetic only | Preserved — becomes a `time_dimensions` entry instead of a plain `dimensions` one |
 | Dataset-level `description` | Dropped (no per-source comment field) | Dropped — same reason | Preserved — each table keeps its own `description` |
 | `label` | Kept | Becomes `display_name` | Dropped — no display-name equivalent |
-| Conversion bugs | 2 real upstream bugs in dbt-core's native OSI->MetricFlow converter (missing `agg_time_dimension`, `order_count` misattributed) — needs `patch_manifest_for_mf_query.py` before every query | None found — conversion is clean, verified against a real workspace end to end | None in the *local* conversion step, but the raw output isn't directly deployable — needs `_prepare_semantic_model`'s two fixes (`base_table` qualifying, metrics re-nested per-table) before `CREATE SEMANTIC VIEW` accepts it; local converter gives zero warning about either |
+| Conversion bugs | 2 real upstream bugs in dbt-core's native OSI->MetricFlow converter (missing `agg_time_dimension`, `order_count` misattributed) — needs `patch_manifest_for_mf_query.py` after every dbt recompile, before the next query | None found — conversion is clean, verified against a real workspace end to end | None in the *local* conversion step, but the raw output isn't directly deployable — needs `_prepare_semantic_model`'s two fixes (`base_table` qualifying, metrics re-nested per-table) before `CREATE SEMANTIC VIEW` accepts it; local converter gives zero warning about either |
 | Query syntax | `mf query --metrics x --group-by entity__dim` | `SELECT dim, MEASURE(x) FROM view GROUP BY dim` | `SELECT * FROM SEMANTIC_VIEW(view METRICS x DIMENSIONS dim)` — plain SQL, no AI needed (Cortex Analyst NL querying is also available, separately) |
 
 `snowflake/ossie/orders_customers.yaml` and
