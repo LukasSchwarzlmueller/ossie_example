@@ -1,4 +1,4 @@
-version: 0.2.0.dev0  # DIFF vs dbt: dbt requires "0.1.0"/"0.1.1" here, rejects this; Databricks matches this value
+version: 0.2.0.dev0
 semantic_model:
 - name: sales_demo
   description: Minimal orders/customers demo model for the OSI meetup talk
@@ -9,11 +9,6 @@ semantic_model:
     - customer_id
     description: One row per customer
     fields:
-    # No `customer_id` field here (kept only in primary_key above) -
-    # structurally identical to the Databricks copy on this axis. See its
-    # comment here, and NOTES.md, for why (short version: Snowflake's
-    # actual deploy path tolerates either, dbt/Databricks don't agree with
-    # each other).
     - name: customer_name
       expression:
         dialects:
@@ -23,6 +18,8 @@ semantic_model:
             expression: "INITCAP(customer_name)"
           - dialect: DATABRICKS
             expression: "LOWER(customer_name)"
+      label: Customer Name
+      datatype: String
     - name: customer_segment
       expression:
         dialects:
@@ -32,6 +29,9 @@ semantic_model:
       datatype: String
       dimension:
         is_time: false
+      ai_context:
+        synonyms: E/SMB
+        instructions: Splits customers into Enterprise and SMB. Sales commissions and the CEO's board deck are both based on this.
   - name: orders
     source: ossie_demo.main.orders
     primary_key:
@@ -66,6 +66,11 @@ semantic_model:
           expression: order_amount
       label: Order Amount
       datatype: Decimal
+      ai_context:
+        synonyms:
+        - amount
+        - order total
+        - order value
   relationships:
   - name: orders_to_customers
     from: orders
@@ -100,3 +105,9 @@ semantic_model:
         expression: AVG(order_amount)
     description: Average order value
     datatype: Decimal
+    ai_context:
+      synonyms:
+      - CEO monday love
+      - average order value
+      - average purchase value
+      instructions: This is the number the CEO checks every Monday.
