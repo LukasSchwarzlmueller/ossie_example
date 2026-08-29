@@ -50,11 +50,9 @@ def run(w: WorkspaceClient, warehouse_id: str, statement: str):
         warehouse_id=warehouse_id,
         wait_timeout="30s",
     )
-    state = result.status.state if result.status else None
-    print(f"  status: {state}")
     error = result.status.error if result.status else None
     if error is not None:
-        raise SystemExit(f"  error ({error.error_code}): {error.message}\n\nStatement was:\n{statement}")
+        raise SystemExit(f"error ({error.error_code}): {error.message}\n\nStatement was:\n{statement}")
     return result
 
 
@@ -118,12 +116,14 @@ def main() -> None:
         """,
     )
 
-    print(f"Verifying what actually persisted (SHOW CREATE TABLE {qualified}.{view_name})...")
+    print("Verifying what actually persisted (SHOW CREATE TABLE)...")
     show_result = run(w, warehouse_id, f"SHOW CREATE TABLE {qualified}.{view_name}")
     created_view_sql = show_result.result.data_array[0][0]
-    print(created_view_sql)
     if "synonyms:" not in created_view_sql:
         print("  WARNING: 'synonyms:' not found anywhere in the persisted view - see NOTES.md")
+        print(created_view_sql)
+    else:
+        print("  synonyms persisted correctly.")
 
     print("Done. Query it with:")
     print("  SELECT customer_segment, MEASURE(total_revenue), MEASURE(avg_order_value)")

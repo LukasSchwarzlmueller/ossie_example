@@ -150,7 +150,7 @@ def main() -> None:
     print(f"  {cur.fetchone()[0]}")
 
     print("Done. Query it with:")
-    print(f"  SELECT * FROM SEMANTIC_VIEW(")
+    print("  SELECT * FROM SEMANTIC_VIEW(")
     print(f"    {DATABASE}.{SCHEMA}.sales_demo")
     print("    METRICS total_revenue, order_count, avg_order_value")
     print("    DIMENSIONS customer_segment")
