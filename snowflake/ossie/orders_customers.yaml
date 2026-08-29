@@ -17,7 +17,7 @@ semantic_model:
           - dialect: SNOWFLAKE
             expression: "INITCAP(customer_name)"
           - dialect: DATABRICKS
-            expression: "LOWER(customer_name)"
+            expression: "LOWER(customers.customer_name)"
       label: Customer Name
       datatype: String
     - name: customer_segment
@@ -30,7 +30,6 @@ semantic_model:
       dimension:
         is_time: false
       ai_context:
-        synonyms: E/SMB
         instructions: Splits customers into Enterprise and SMB. Sales commissions and the CEO's board deck are both based on this.
   - name: orders
     source: ossie_demo.main.orders
@@ -107,7 +106,7 @@ semantic_model:
     datatype: Decimal
     ai_context:
       synonyms:
-      - CEO monday love
+      - AOV
       - average order value
       - average purchase value
       instructions: This is the number the CEO checks every Monday.

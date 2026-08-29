@@ -17,7 +17,7 @@ semantic_model:
           - dialect: SNOWFLAKE
             expression: "INITCAP(customer_name)"
           - dialect: DATABRICKS
-            expression: "LOWER(customer_name)"
+            expression: "LOWER(customers.customer_name)"
       label: Customer Name
       datatype: String
     - name: customer_segment

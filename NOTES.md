@@ -95,6 +95,40 @@ Two real bugs found and fixed in the script itself along the way:
   clause). The correct form, confirmed live, is `MEASURE(name)` inside the
   `SELECT` list.
 
+**A `synonyms`/expression discrepancy turned out to be a stale view, not a
+Databricks bug.** First deploy attempt showed `total_revenue`'s synonyms
+persisting but `order_amount`'s and `avg_order_value`'s missing after the
+fact (checked via `SHOW CREATE TABLE`, which is also how you inspect a
+Metric View's stored YAML - `SHOW CREATE VIEW` is not valid Databricks SQL
+syntax, `PARSE_SYNTAX_ERROR` confirmed live). Red flag: the same stored
+YAML also had `customer_name`'s `expr` as bare `customers.customer_name`
+with no `LOWER(...)`, even though the local `metric_view.yaml` already had
+`LOWER(customer_name)` - a SQL function does not silently vanish on
+`SHOW CREATE TABLE`, so the deployed view predated the current export.
+
+The actual, real bug that caused this: `databricks/ossie/orders_customers.yaml`'s
+`DATABRICKS`-dialect expression for `customer_name` was `LOWER(customer_name)`
+- a bare, unqualified column reference inside a function call, on a field
+that lives in the joined `customers` dataset while `orders` is the Metric
+View's fact/source. `ossie_to_metric_view.py`'s `_convert_field` only
+auto-qualifies a *simple* identifier expression (`is_simple_identifier`);
+for anything more complex it can't safely rewrite the SQL and just warns
+- `uv run python3 databricks/export_metric_view.py --warnings` prints
+`[field 'customer_name'] complex expression on a joined table; emitted
+as-is, verify qualification` - and passes it through unchanged. Databricks
+then rejected the redeploy outright: `[UNRESOLVED_COLUMN.WITH_SUGGESTION]
+... cannot be resolved`. Fixed by qualifying it in the source model:
+`LOWER(customers.customer_name)`. The exporter still emits the same
+warning after the fix (it can't tell qualified from unqualified, just
+"not a bare identifier"), but the emitted `expr` is now correct.
+
+After the fix, a completely fresh deploy round-trips everything
+correctly - `SHOW CREATE TABLE` on the freshly created view shows
+`order_amount`'s, `total_revenue`'s, and `avg_order_value`'s synonyms
+all present, and `customer_name`'s `expr` as
+`LOWER(customers.customer_name)`. No Databricks-side synonym bug exists;
+the earlier finding was purely a stale-view artifact.
+
 ## Snowflake: two viable paths, one working, one currently metrics-incapable
 
 Two genuinely different ways to get an Ossie model into Snowflake:

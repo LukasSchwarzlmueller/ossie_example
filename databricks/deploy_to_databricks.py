@@ -44,7 +44,7 @@ def _load_env_file(path: Path) -> None:
         os.environ.setdefault(key.strip(), value.strip())
 
 
-def run(w: WorkspaceClient, warehouse_id: str, statement: str) -> None:
+def run(w: WorkspaceClient, warehouse_id: str, statement: str):
     result = w.statement_execution.execute_statement(
         statement=statement,
         warehouse_id=warehouse_id,
@@ -55,6 +55,7 @@ def run(w: WorkspaceClient, warehouse_id: str, statement: str) -> None:
     error = result.status.error if result.status else None
     if error is not None:
         raise SystemExit(f"  error ({error.error_code}): {error.message}\n\nStatement was:\n{statement}")
+    return result
 
 
 def main() -> None:
@@ -116,6 +117,13 @@ def main() -> None:
         $$
         """,
     )
+
+    print(f"Verifying what actually persisted (SHOW CREATE TABLE {qualified}.{view_name})...")
+    show_result = run(w, warehouse_id, f"SHOW CREATE TABLE {qualified}.{view_name}")
+    created_view_sql = show_result.result.data_array[0][0]
+    print(created_view_sql)
+    if "synonyms:" not in created_view_sql:
+        print("  WARNING: 'synonyms:' not found anywhere in the persisted view - see NOTES.md")
 
     print("Done. Query it with:")
     print("  SELECT customer_segment, MEASURE(total_revenue), MEASURE(avg_order_value)")
