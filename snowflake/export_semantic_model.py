@@ -13,7 +13,7 @@ import argparse
 import warnings
 from pathlib import Path
 
-from ossie_snowflake.converter import convert_osi_to_snowflake
+from ossie_snowflake.converter import convert_ossie_to_snowflake
 
 REPO_ROOT = Path(__file__).parent.parent
 INPUT = REPO_ROOT / "snowflake" / "ossie" / "orders_customers.yaml"
@@ -30,7 +30,7 @@ def main() -> None:
     with warnings.catch_warnings():
         if not args.warnings:
             warnings.simplefilter("ignore")
-        semantic_model_yaml = convert_osi_to_snowflake(INPUT.read_text())
+        semantic_model_yaml = convert_ossie_to_snowflake(INPUT.read_text())
     OUTPUT.write_text(semantic_model_yaml)
     print(f"Wrote {OUTPUT.relative_to(REPO_ROOT)}")
 

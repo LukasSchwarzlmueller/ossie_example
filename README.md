@@ -1,12 +1,13 @@
 # Apache Ossie -> dbt, Databricks & Snowflake
 
 Converts one [Apache Ossie](https://ossie.apache.org/) semantic model into
-three targets: a native dbt Core 1.12 project, a Databricks Unity Catalog
-Metric View, and a Snowflake Cortex Analyst semantic model. All three are
-driven by the same source model (`customers` + `orders`, 1:n on
-`customer_id`; metrics `total_revenue`, `order_count`, `avg_order_value`)
-— see `NOTES.md` for exactly how the three copies of that model differ,
-and why.
+three targets: a dbt Core 1.12 project (via the separate `apache-ossie-dbt`
+converter package, not dbt-core's own native OSI loader - see below), a
+Databricks Unity Catalog Metric View, and a Snowflake Cortex Analyst
+semantic model. All three are driven by the same source model
+(`customers` + `orders`, 1:n on `customer_id`; metrics `total_revenue`,
+`order_count`, `avg_order_value`) — see `NOTES.md` for exactly how the
+three copies of that model differ, and why.
 
 ## Prerequisites
 
@@ -23,13 +24,20 @@ uv sync
 
 ## dbt
 
-The model: `dbt/ossie/orders_customers.json`.
+The model: `dbt/ossie/orders_customers.yaml` (near-identical to the
+Databricks copy, `version: 0.2.0.dev0`, one field differs - see below).
+dbt-core's own native OSI loader rejects
+this outright - it only accepts `version: "0.1.0"`/`"0.1.1"` - silently
+finding zero semantic models/metrics rather than erroring, so this repo
+uses the separate `apache-ossie-dbt` converter package instead (added to
+the root `pyproject.toml`), which converts the Ossie YAML directly into
+`semantic_manifest.json`. See `NOTES.md` for the full story.
 
 ```bash
 cd dbt
-uv run dbt run                                    # builds the tables, confirms the model loads
-uv run dbt list  
-uv run scripts/patch_manifest_for_mf_query.py      # works around the known bugs below - only needs re-running after dbt recompiles, see below
+uv run dbt run                                     # builds the tables
+uv run scripts/export_metric_view.py               # converts orders_customers.yaml via apache-ossie-dbt, overwrites target/semantic_manifest.json
+uv run scripts/patch_manifest_for_mf_query.py       # works around the known bugs below - only needs re-running after export_metric_view.py or dbt recompiles, see below
 uv run mf query --metrics total_revenue,avg_order_value --group-by customer_id__customer_segment
 cd ..
 ```
@@ -41,39 +49,54 @@ smb                                        40                40
 enterprise                                950.75            316.917
 ```
 
-Same thing in one command, from the repo root: `uv run dbt/run_demo_query.py`
-(queries `total_revenue`/`avg_order_value` together). To query other
-metrics/dimensions, use `mf list metrics`/`mf query` directly as above —
-just re-run the patch step first if you've run any dbt command since.
+To query other metrics/dimensions, use `mf list metrics`/`mf query`
+directly as above - just re-run the patch step first if you've re-run
+`export_metric_view.py` or any dbt command since.
 
 ### Known issues (dbt)
 
-dbt-core 1.12's native OSI -> MetricFlow conversion
-(`metricflow/converters/osi_to_msi.py`, vendored inside dbt-core, not part
-of Ossie itself) has two bugs. Both are invisible at `dbt parse`/`dbt run`
-time — the compiled manifest just isn't queryable as produced:
+`apache-ossie-dbt`'s own converter has three real bugs, invisible until
+you actually try `mf query`. (Getting there needs a small detour first:
+`ossie-dbt`'s own CLI currently crashes on every input - a Pydantic v1/v2
+mismatch in the package's own code - so `export_metric_view.py` calls the
+converter directly instead of going through it. Read that as "broken right
+now," not a structural finding.)
 
 1. **No `agg_time_dimension` is ever set**, which MetricFlow requires for
-   every query, even ungrouped ones.
+   every query, even ungrouped ones. Same bug as dbt-core's own native
+   OSI loader - a completely separate codebase, independently confirmed.
 2. **`order_count` is attached to the wrong semantic model**
-   (`customers` instead of `orders`) — the converter picks a metric's
+   (`customers` instead of `orders`) - the converter picks a metric's
    owning dataset by finding a real column name in its SQL, and bare
-   `COUNT(*)` has none.
+   `COUNT(*)` has none. Same bug, same root cause, as dbt-core's native
+   loader.
+3. **No time spine is ever configured** - this converter has no access to
+   the dbt project it'll run inside, so it can't look up the real
+   `metricflow_time_spine` model the way dbt-core's native loader can.
 
-`dbt/scripts/patch_manifest_for_mf_query.py` works around both by editing
-the compiled `dbt/target/semantic_manifest.json` directly after it's
-generated. It does **not** fix `order_count` fully: even patched,
-`COUNT(*)`-shaped metrics compile to SQL DuckDB rejects (`STAR expression
-is only allowed as the root element`) — a separate code-generation bug.
-Query `total_revenue`/`avg_order_value` instead.
+A fourth issue looked like a bug and turned out to be a real conflict:
+`customers` came out with zero entities despite declaring a `primary_key`
+in the source, because this converter only turns a `primary_key` column
+into an entity if it's *also* declared as a field on the same dataset -
+and `customer_id` had been dropped from `customers.fields` for
+Databricks' sake (see below). Fixed by adding it back as a field on
+`dbt/ossie/orders_customers.yaml` specifically, which is why that file is
+no longer identical to the Databricks copy - one field, opposite
+requirements, not a bug in either converter.
+
+`dbt/scripts/patch_manifest_for_mf_query.py` works around the three real
+bugs by editing the compiled `dbt/target/semantic_manifest.json` directly
+after `export_metric_view.py` generates it. It does **not** fix
+`order_count` fully: even patched, `COUNT(*)`-shaped metrics compile to
+SQL DuckDB rejects (`STAR expression is only allowed as the root
+element`) - a separate code-generation bug, same as dbt-core's native
+loader hits. Query `total_revenue`/`avg_order_value` instead.
 
 **The patch doesn't stick across a recompile.** It edits a generated
-file, and *any* dbt command that recompiles — `dbt run`, `dbt parse`, `dbt
-show`, `dbt docs generate` — regenerates that file from scratch and
-silently reverts it. `mf list`/`mf query` themselves only *read* that
-file, so any number of them in a row is fine without re-patching — you
-only need to re-run `patch_manifest_for_mf_query.py` after you've run one
-of those four dbt commands again, right before your next `mf` call.
+file, and *any* dbt command that recompiles, or re-running
+`export_metric_view.py`, regenerates that file from scratch and silently
+reverts it. Re-run `patch_manifest_for_mf_query.py` right before your
+next `mf` call.
 
 ## Databricks
 
@@ -196,36 +219,42 @@ limitation from what's fixed here):
    under `orders` — a model with metrics spanning multiple tables would
    need real per-metric table attribution the converter doesn't provide.
 
-## dbt vs Databricks vs Snowflake: what had to differ
+## Databricks vs Snowflake: what had to differ
 
-Every one of the three forces at least one real change to the source
-file — none of the three pairwise relationships is "zero changes":
+`dbt/ossie/orders_customers.yaml` started as a byte-identical copy of
+`databricks/ossie/orders_customers.yaml` - this repo doesn't use dbt-core's
+own native OSI loader (it would want `version: "0.1.0"`/`"0.1.1"`, neither
+of which this file has - see "Known issues (dbt)" above), it converts a
+Databricks-shaped file through the separate `apache-ossie-dbt` package
+instead. It differs by exactly one field now: `customers.customer_id`,
+present here, dropped from the Databricks copy - see "Known issues (dbt)"
+above for why (this converter needs it present, Databricks needs it
+absent, opposite requirements on the same field). The remaining
+source-file differences in this repo are between Databricks and
+Snowflake:
 
-| | dbt | Databricks | Snowflake |
-|---|---|---|---|
-| Source file format | `.json` only — the native loader globs `osi-paths/**/*.json`, a `.yaml` file is silently invisible to it | Either — plain `yaml.load` (JSON is valid YAML), `.yaml` used here to match Ossie's own docs | Either — same, `yaml.safe_load` |
-| `version` field | `"0.1.0"` or `"0.1.1"` only | `"0.2.0.dev0"` only | `"0.2.0.dev0"` only — same as Databricks |
-| `customers.customer_id` field | Must be present — dbt's join inference needs matching entity names on both sides of the relationship | Must be dropped from `fields` (kept only in `primary_key`) — Metric Views need globally unique dimension names across a flattened namespace, and `orders.customer_id`/`customers.customer_id` would collide | Tolerates either — confirmed by deploying the Databricks-shaped (absent) file as-is and querying it successfully |
-| `data_type`/`datatype` | Optional everywhere | Never read at all (harmless either way) | **Required on every Dimension and Fact** — the local converter silently omits it with no warning when absent; only surfaces as a live validation failure |
-| `dimension.is_time` | Required (dbt's vendored schema, stricter than Ossie's own, which makes it optional) | No equivalent field — silently dropped, cosmetic only | Preserved — becomes a `time_dimensions` entry instead of a plain `dimensions` one |
-| Dataset-level `description` | Dropped (no per-source comment field) | Dropped — same reason | Preserved — each table keeps its own `description` |
-| `label` | Kept | Becomes `display_name` | Dropped — no display-name equivalent |
-| Conversion bugs | 2 real upstream bugs in dbt-core's native OSI->MetricFlow converter (missing `agg_time_dimension`, `order_count` misattributed) — needs `patch_manifest_for_mf_query.py` after every dbt recompile, before the next query | None found — conversion is clean, verified against a real workspace end to end | None in the *local* conversion step, but the raw output isn't directly deployable — needs `_prepare_semantic_model`'s two fixes (`base_table` qualifying, metrics re-nested per-table) before `CREATE SEMANTIC VIEW` accepts it; local converter gives zero warning about either |
-| Query syntax | `mf query --metrics x --group-by entity__dim` | `SELECT dim, MEASURE(x) FROM view GROUP BY dim` | `SELECT * FROM SEMANTIC_VIEW(view METRICS x DIMENSIONS dim)` — plain SQL, no AI needed (Cortex Analyst NL querying is also available, separately) |
+| | Databricks | Snowflake |
+|---|---|---|
+| `customers.customer_id` field | Must be dropped from `fields` (kept only in `primary_key`) — Metric Views need globally unique dimension names across a flattened namespace, and `orders.customer_id`/`customers.customer_id` would collide | Tolerates either — confirmed by deploying the Databricks-shaped (absent) file as-is and querying it successfully |
+| `data_type`/`datatype` | Never read at all (harmless either way) | **Required on every Dimension and Fact** — the local converter silently omits it with no warning when absent; only surfaces as a live validation failure |
+| `dimension.is_time` | No equivalent field — silently dropped, cosmetic only | Preserved — becomes a `time_dimensions` entry instead of a plain `dimensions` one |
+| Dataset-level `description` | Dropped — no per-source comment field | Preserved — each table keeps its own `description` |
+| `label` | Becomes `display_name` | Dropped — no display-name equivalent |
+| Conversion bugs | None found — conversion is clean, verified against a real workspace end to end | None in the *local* conversion step, but the raw output isn't directly deployable — needs `_prepare_semantic_model`'s two fixes (`base_table` qualifying, metrics re-nested per-table) before `CREATE SEMANTIC VIEW` accepts it; local converter gives zero warning about either |
+| Query syntax | `SELECT dim, MEASURE(x) FROM view GROUP BY dim` | `SELECT * FROM SEMANTIC_VIEW(view METRICS x DIMENSIONS dim)` — plain SQL, no AI needed (Cortex Analyst NL querying is also available, separately) |
 
 `snowflake/ossie/orders_customers.yaml` and
 `databricks/ossie/orders_customers.yaml` are structurally identical (only
-their explanatory comments differ) — dbt is the real outlier, differing
-from both in exactly two places (see `scripts/diff_summary.py`): the
-`version` tag, and `customer_id` present (dbt needs it) vs. dropped
-(Databricks needs it absent; Snowflake just goes along with whichever
-shape it's given). Everything else — descriptions, labels, relationships,
-all 3 metrics — is identical across all three files.
+their explanatory comments differ). `dbt/ossie/orders_customers.yaml`
+differs from both by exactly the one `customer_id` field described above;
+everything else - descriptions, labels, relationships, all 3 metrics - is
+identical across all three files.
 
 ## Layout
 
-- `dbt/ossie/orders_customers.json` — the Ossie model, dbt-native shape.
-- `dbt/run_demo_query.py` — one-command dbt run + patch + `mf query`.
+- `dbt/ossie/orders_customers.yaml` — the same model as Databricks/Snowflake, differing by one field (`customer_id` on `customers`) — see "Known issues (dbt)" above.
+- `dbt/scripts/export_metric_view.py` — converts it via `apache-ossie-dbt`,
+  overwrites `dbt/target/semantic_manifest.json`.
 - `dbt/scripts/patch_manifest_for_mf_query.py` — the bug workaround, see
   "Known issues (dbt)" above.
 - `databricks/ossie/orders_customers.yaml` — the same model, adapted for
@@ -245,6 +274,6 @@ all 3 metrics — is identical across all three files.
 ## Further reading
 
 `NOTES.md` has the full background: why the model copies differ, how each
-bug above was found, and other gotchas hit along the way (dbt's local docs
-UI limitations, DAG lineage quirks, a second Snowflake deploy path that
+bug above was found, and other gotchas hit along the way (naming drift
+inside `apache-ossie-dbt` itself, a second Snowflake deploy path that
 doesn't work yet, etc).
