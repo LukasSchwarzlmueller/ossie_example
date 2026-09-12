@@ -1,36 +1,10 @@
 """Deploy the demo tables + a real, SQL-queryable Semantic View to Snowflake.
 
-NOT part of the live demo (conversion-only, by design) - this is for
-trying the deploy step separately, once you have Snowflake access set up.
 
-Verified against a real account: creates its own warehouse, database, and
-schema; creates + populates the tables; and creates a native Semantic View
-(`CREATE SEMANTIC VIEW`, via `SYSTEM$CREATE_SEMANTIC_VIEW_FROM_YAML`) with
-all 3 metrics working, queryable with plain SQL:
-    SELECT * FROM SEMANTIC_VIEW(
-      <db>.<schema>.sales_demo
-      METRICS total_revenue, order_count, avg_order_value
-      DIMENSIONS customer_segment
-    )
-
-`_nest_metrics_per_table` below fixes the one real gap in `ossie-snowflake`'s
-raw output that this procedure needs - see NOTES.md for how it was found,
-and for a separate deploy path (Snowflake's native Ossie-file upload) that
-doesn't work yet. (`base_table` qualification is handled earlier, by
-`export_semantic_model.py` replacing the Ossie model's placeholder source
-before conversion - see that script.)
-
-Needs `pip install snowflake-connector-python` / `uv add
-snowflake-connector-python` first - not added to this project's
-dependencies since it's outside the demo's scope.
-
-Creates its own warehouse/database/schema - SNOWFLAKE_DATABASE/
-SNOWFLAKE_SCHEMA from .env (default `OSSIE_DEMO`/`PUBLIC`), the same two
-vars `export_semantic_model.py` reads to qualify `semantic_model.yaml`, so
-export and deploy can't target different places. Auth comes from the
-environment too - copy .env.example to .env and fill in real values (.env
-is gitignored, never commit it). This script loads .env itself, so just:
-    uv run python3 snowflake/deploy_to_snowflake.py
+Creates its own warehouse/database/schema (SNOWFLAKE_DATABASE/SCHEMA from
+.env - run export_semantic_model.py first, which qualifies
+semantic_model.yaml for the same place). Needs `uv add
+snowflake-connector-python` first - not a project dependency by default.
 """
 
 import os
@@ -40,20 +14,13 @@ import yaml
 
 from common.env import REPO_ROOT, load_env_file
 
-WAREHOUSE = "OSSIE_COMPUTE_WH"  # deliberately not "<DATABASE>_WH" - too easy to misread as the database
+WAREHOUSE = "OSSIE_COMPUTE_WH"
 SEMANTIC_MODEL_FILE = "semantic_model.yaml"
-# `ossie-snowflake` doesn't attribute metrics to a table; this demo's metrics
-# all aggregate order-level facts, so they all belong under this one.
-METRICS_TABLE = "orders"
+METRICS_TABLE = "orders"  # ossie-snowflake doesn't attribute metrics to a table; all 3 are order-level
 
 
 def _nest_metrics_per_table(semantic_model_yaml: str) -> str:
-    """Fix up ossie-snowflake's raw output for SYSTEM$CREATE_SEMANTIC_VIEW_FROM_YAML.
-
-    Metrics need nesting inside their owning table, not one top-level list
-    - see NOTES.md. (base_table qualification already happened at export
-    time, so nothing to do here for that.)
-    """
+    """Nest ossie-snowflake's top-level metrics under their owning table - see NOTES.md."""
     doc = yaml.safe_load(semantic_model_yaml)
 
     metrics = doc.pop("metrics", None)
@@ -96,8 +63,6 @@ def main() -> None:
 
     role = os.environ.get("SNOWFLAKE_ROLE")  # optional; falls back to your default role
 
-    # No warehouse yet - CREATE WAREHOUSE is a metadata operation and doesn't need
-    # an active one. Connect bare, create/activate WAREHOUSE, then proceed.
     conn = snowflake.connector.connect(account=account, user=user, password=password, role=role)
     cur = conn.cursor()
 

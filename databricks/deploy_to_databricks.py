@@ -1,26 +1,9 @@
 """Deploy the demo tables + Metric View to a real Databricks workspace.
 
-NOT part of the live demo (conversion-only, by design) - this is for
-trying the deploy step separately, once you have workspace access set up.
-
-Verified against a real workspace (2026-08-25): the `CREATE ... WITH METRICS
-LANGUAGE YAML` DDL and the `SELECT dim, MEASURE(metric) FROM view GROUP BY
-dim` query form both work as written below. Docs:
-  https://docs.databricks.com/aws/en/metric-views/
-
-Needs DATABRICKS_CATALOG/DATABRICKS_SCHEMA (from .env, default `ossi`/`test`)
-to already exist and a running SQL warehouse - `export_metric_view.py`
-reads the same two env vars to qualify `metric_view.yaml`, so this script
-just deploys it as-is; run that first. Auth + warehouse ID also come from
-.env - copy .env.example to .env and fill in real values (.env is
-gitignored, never commit it). This script loads .env itself, so just:
-    uv run python3 databricks/deploy_to_databricks.py
-
-If several people share the same catalog/schema (e.g. a workshop), set
-DATABRICKS_METRIC_VIEW_NAME in .env to something unique per person so your
-`CREATE OR REPLACE VIEW` doesn't clobber someone else's - the underlying
-customers/orders tables stay shared (same synthetic data for everyone, so
-collisions there are harmless).
+Needs DATABRICKS_CATALOG/DATABRICKS_SCHEMA to already exist (run
+export_metric_view.py first, which qualifies metric_view.yaml for the same
+catalog/schema) and a running SQL warehouse. Auth + warehouse ID come from
+.env - see .env.example.
 """
 
 import os

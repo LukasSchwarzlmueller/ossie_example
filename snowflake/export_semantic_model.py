@@ -1,20 +1,8 @@
-"""Regenerate snowflake/semantic_model.yaml from the Ossie model.
+"""Convert snowflake/ossie/orders_customers.yaml to semantic_model.yaml.
 
-Same conversion as `ossie-snowflake -i ... -o ...` - just wrapped so the
-demo doesn't have to type the full command. Warnings (what the conversion
-couldn't carry over) are suppressed by default; pass --warnings to show
-them.
-
-`snowflake/ossie/orders_customers.yaml`'s `source:` fields hold the literal
-placeholder `__catalog__.__schema__` instead of a real database/schema -
-this script replaces it with `SNOWFLAKE_DATABASE`/`SNOWFLAKE_SCHEMA` from
-`.env` (defaults `OSSIE_DEMO`/`PUBLIC`) before conversion, so the exported
-semantic model's `base_table`s come out already qualified.
-`deploy_to_snowflake.py` reads the same two env vars for where to create
-the underlying tables, so export and deploy can't drift apart.
-
-Usage:
-    uv run python3 snowflake/export_semantic_model.py [--warnings]
+Replaces the model's `__catalog__.__schema__` source placeholder with
+SNOWFLAKE_DATABASE/SNOWFLAKE_SCHEMA from .env before conversion - see
+NOTES.md. Pass --warnings to see what didn't survive the conversion.
 """
 
 import argparse

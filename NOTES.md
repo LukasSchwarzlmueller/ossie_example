@@ -126,6 +126,17 @@ Two real bugs found and fixed in the script itself along the way:
   clause). The correct form, confirmed live, is `MEASURE(name)` inside the
   `SELECT` list.
 
+**`source:` qualification lives in the export script, not the deploy
+script.** `databricks/ossie/orders_customers.yaml`'s `source:` fields hold
+a literal placeholder (`__catalog__.__schema__`); `export_metric_view.py`
+replaces it with `DATABRICKS_CATALOG`/`DATABRICKS_SCHEMA` (from `.env`)
+before conversion, so `metric_view.yaml` comes out of export already
+qualified. `deploy_to_databricks.py` reads the same two env vars — not to
+qualify anything itself, but to create the underlying tables in the same
+place, and to sanity-check the exported file was qualified for that place
+before deploying it. Same idea, mirrored in `snowflake/export_semantic_model.py`
+(see below).
+
 **A `synonyms`/expression discrepancy turned out to be a stale view, not a
 Databricks bug.** First deploy attempt showed `total_revenue`'s synonyms
 persisting but `order_amount`'s and `avg_order_value`'s missing after the
@@ -159,6 +170,23 @@ correctly - `SHOW CREATE TABLE` on the freshly created view shows
 all present, and `customer_name`'s `expr` as
 `LOWER(customers.customer_name)`. No Databricks-side synonym bug exists;
 the earlier finding was purely a stale-view artifact.
+
+## Databricks: the export/import pair is a genuine, lossless round trip
+
+`ossie-databricks` ships a reverse converter too —
+`metric_view_to_ossie.convert_metric_view_to_ossie` — not just the forward
+`ossie_to_metric_view` this repo's `export_metric_view.py` uses.
+`roundtrip_databricks/run_roundtrip.py` verifies the two compose
+losslessly: take the real, qualified `databricks/metric_view.yaml`,
+convert it back to Ossie, convert that forward again, and diff against the
+original — byte-for-byte identical, confirmed live.
+
+The mechanism: anything a Metric View has that Ossie has no native field
+for (here, `rely.at_most_one_match` on the join) gets stashed in
+`custom_extensions[DATABRICKS]` on the round-tripped Ossie file rather than
+dropped, and restored on the way back. Inspect
+`roundtrip_databricks/ossie/orders_customers.yaml` (gitignored,
+regenerated each run) to see it directly.
 
 ## Snowflake: two viable paths, one working, one currently metrics-incapable
 
@@ -318,6 +346,38 @@ or re-running `export_metric_view.py`, regenerates that file from
 scratch, silently reverting the patch. Re-run
 `patch_manifest_for_mf_query.py` immediately before every `mf query`/
 `mf list` call.
+
+## Shared tooling: `common/` lives under `src/`, not the repo root
+
+All four export/deploy scripts share one `.env`-loading helper,
+`common/env.py` (`load_env_file`, `REPO_ROOT`), importable as plain
+`from common.env import ...` — no per-script `sys.path.insert` needed. That
+requires `common` to be packaged and editable-installed via
+`pyproject.toml`'s `[tool.hatch.build.targets.wheel]`.
+
+First attempt — `packages = ["common"]`, at the repo root — broke
+something else: hatchling's editable install for a flat layout doesn't
+scope itself to just the named package, it drops the *entire* project root
+onto `sys.path`. Confirmed live: `databricks.__path__`/`snowflake.__path__`
+came back listing *both* the real installed `databricks-sdk`/
+`snowflake-connector-python` packages *and* this repo's own `databricks/`/
+`snowflake/` folders, merged into one namespace package (neither folder
+has an `__init__.py`). Harmless today — no filename collides — but
+fragile: any future file in either folder matching a real submodule name
+in those SDKs would silently shadow it, repo-wide.
+
+Fixed with a `src/` layout: `common/` moved to `src/common/`, `packages =
+["src/common"]`. Hatchling's editable `.pth` then only adds `src/` to
+`sys.path`, not the repo root — confirmed live, `databricks.__path__`/
+`snowflake.__path__` resolve to the real installed packages only, for the
+normal invocation style (`uv run <path>.py`; running via `python3 -c`
+instead puts cwd on `sys.path` regardless, which is not how any script
+here is actually run).
+
+`databricks/`, `snowflake/`, and `dbt/` must never get an `__init__.py` —
+each name collides with a real installed dependency (`databricks-sdk`,
+`snowflake-connector-python`, `dbt-core`); making any of them a real
+package risks exactly the shadowing described above.
 
 ## Misc
 

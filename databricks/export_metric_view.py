@@ -1,20 +1,8 @@
-"""Regenerate databricks/metric_view.yaml from the Ossie model.
+"""Convert databricks/ossie/orders_customers.yaml to metric_view.yaml.
 
-Same conversion as `ossie-databricks export -i ... -o ...` -- just wrapped so the
-live demo doesn't have to type the full command. Warnings (what the conversion
-couldn't carry over -- see NOTES.md) are suppressed by default; pass --warnings
-to show them.
-
-`databricks/ossie/orders_customers.yaml`'s `source:` fields hold the literal
-placeholder `__catalog__.__schema__` instead of a real catalog/schema - this
-script replaces it with `DATABRICKS_CATALOG`/`DATABRICKS_SCHEMA` from `.env`
-(defaults `ossi`/`test`) before conversion, so the exported Metric View is
-already fully qualified. `deploy_to_databricks.py` reads the same two env
-vars for where to create the underlying tables, so export and deploy can't
-drift apart.
-
-Usage:
-    uv run python3 databricks/export_metric_view.py [--warnings]
+Replaces the model's `__catalog__.__schema__` source placeholder with
+DATABRICKS_CATALOG/DATABRICKS_SCHEMA from .env before conversion - see
+NOTES.md. Pass --warnings to see what didn't survive the conversion.
 """
 
 import argparse

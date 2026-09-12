@@ -1,21 +1,8 @@
-"""Verify the Databricks Metric View <-> Ossie round trip is lossless.
-
-NOT part of the live demo - a standalone check that `ossie-databricks`'s
-export/import pair (`ossie_to_metric_view` / `metric_view_to_ossie`) is a
-genuine, lossless round trip: Metric View -> Ossie -> Metric View again
-reproduces the exact same YAML, byte for byte. Anything a Metric View has
-that Ossie has no native field for (filter, window, format, rely,
-cardinality, parameters, materialization) survives the trip via
-`custom_extensions[DATABRICKS]`, not by being dropped.
-
-Starts from the real `databricks/metric_view.yaml` - run
-`export_metric_view.py` first. Writes the intermediate Ossie model and the
-round-tripped Metric View here (`roundtrip_databricks/ossie/`,
-`roundtrip_databricks/metric_view.yaml`) so you can inspect either side of
-the trip; both are gitignored, regenerated each run.
-
-Usage:
-    uv run roundtrip_databricks/run_roundtrip.py
+"""Not part of the talk - a side check that ossie-databricks' Metric View
+-> Ossie -> Metric View round trip is lossless (byte-for-byte). Anything
+Ossie has no native field for is preserved via
+`custom_extensions[DATABRICKS]` instead of being dropped. Run
+export_metric_view.py first.
 """
 
 import difflib
