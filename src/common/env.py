@@ -1,10 +1,10 @@
 import os
 from pathlib import Path
 
-# common/env.py -> common/ -> repo root. Anchored on this file's own
-# location (stable regardless of invocation cwd), not on the caller's
+# src/common/env.py -> common/ -> src/ -> repo root. Anchored on this file's
+# own location (stable regardless of invocation cwd), not on the caller's
 # __file__, since callers live at varying depths (databricks/, snowflake/).
-REPO_ROOT = Path(__file__).parent.parent
+REPO_ROOT = Path(__file__).parent.parent.parent
 
 
 def load_env_file(path: Path = REPO_ROOT / ".env") -> None:
