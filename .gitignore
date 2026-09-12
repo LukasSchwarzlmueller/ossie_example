@@ -8,3 +8,5 @@ logs/
 .env
 databricks/metric_view.yaml
 snowflake/semantic_model.yaml
+roundtrip_databricks/ossie/orders_customers.yaml
+roundtrip_databricks/metric_view.yaml
