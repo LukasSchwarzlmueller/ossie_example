@@ -119,6 +119,7 @@ are dropped, others repurposed — see NOTES.md for details).
 
 ```bash
 cp .env.example .env   # fill in DATABRICKS_HOST / DATABRICKS_TOKEN / DATABRICKS_WAREHOUSE_ID
+uv run databricks/export_metric_view.py    # re-run if DATABRICKS_CATALOG/SCHEMA change
 uv run databricks/deploy_to_databricks.py
 ```
 
@@ -127,14 +128,19 @@ uv run databricks/deploy_to_databricks.py
 | `DATABRICKS_HOST` | yes | your workspace URL |
 | `DATABRICKS_TOKEN` | yes | personal access token |
 | `DATABRICKS_WAREHOUSE_ID` | yes | SQL warehouse to run against |
+| `DATABRICKS_CATALOG` / `DATABRICKS_SCHEMA` | no | default `ossi`/`test`; must already exist, neither script creates them |
 | `DATABRICKS_METRIC_VIEW_NAME` | no | defaults to `sales_demo_metrics`; set this if you're sharing a catalog/schema with other people so your deploy doesn't overwrite theirs |
 
 `.env` is gitignored and loaded by the script itself — no `--env-file`
 flag needed, and never commit it.
 
-`CATALOG`/`SCHEMA` (default `ossi`/`test`) are constants at the top of
-`databricks/deploy_to_databricks.py` — edit them to match your workspace;
-they must already exist, the script doesn't create them. The
+`databricks/ossie/orders_customers.yaml`'s `source:` fields hold a literal
+placeholder (`__catalog__.__schema__`); `export_metric_view.py` replaces it
+with `DATABRICKS_CATALOG`/`DATABRICKS_SCHEMA` before conversion, so
+`metric_view.yaml` comes out already qualified. `deploy_to_databricks.py`
+reads the same two vars — for the tables it creates, and to sanity-check
+that `metric_view.yaml` was exported for the same place — so export and
+deploy can't silently target different catalogs/schemas. The
 `customers`/`orders` tables are shared and safe to re-run (same synthetic
 data for everyone); only the Metric View name needs to be unique per
 person.
@@ -183,13 +189,15 @@ included, no AI/Cortex Analyst required to query it.
 ```bash
 uv add snowflake-connector-python   # not a project dependency yet
 cp .env.example .env   # fill in SNOWFLAKE_ACCOUNT / USER / PASSWORD
+uv run snowflake/export_semantic_model.py    # re-run if SNOWFLAKE_DATABASE/SCHEMA change
 uv run snowflake/deploy_to_snowflake.py
 ```
 
 Creates `OSSIE_DEMO.PUBLIC.customers`/`orders` and
-`OSSIE_DEMO.PUBLIC.sales_demo` (the Semantic View) — `DATABASE`/`SCHEMA`/
-`WAREHOUSE` constants at the top of the script, edit to point at existing
-resources if you'd rather. Query it with plain SQL:
+`OSSIE_DEMO.PUBLIC.sales_demo` (the Semantic View) by default —
+`SNOWFLAKE_DATABASE`/`SNOWFLAKE_SCHEMA` in `.env` (read by both scripts, so
+they can't drift apart), created by the deploy script if missing. Query it
+with plain SQL:
 
 ```sql
 SELECT * FROM SEMANTIC_VIEW(
@@ -209,13 +217,17 @@ attempt via Snowflake's *native* Ossie-YAML importer, which currently
 can't import metrics at all regardless of syntax, a real and separate
 limitation from what's fixed here):
 1. `base_table` needs qualifying from the placeholder source path to
-   where the tables actually get created.
+   where the tables actually get created — handled by
+   `export_semantic_model.py`, which replaces the placeholder in the raw
+   Ossie YAML with `SNOWFLAKE_DATABASE`/`SNOWFLAKE_SCHEMA` before
+   conversion, so `semantic_model.yaml` comes out of export already
+   qualified.
 2. **Metrics need to be nested inside their owning table, not one
    top-level list** — `ossie-snowflake` emits the latter, which Snowflake's
    native schema rejects outright (`Unsupported expression in the
    definition of derived metric <NAME>`, regardless of aggregate function
    or dialect). This demo's 3 metrics all aggregate order-level facts, so
-   `deploy_to_snowflake.py`'s `_prepare_semantic_model` moves them all
+   `deploy_to_snowflake.py`'s `_nest_metrics_per_table` moves them all
    under `orders` — a model with metrics spanning multiple tables would
    need real per-metric table attribution the converter doesn't provide.
 
@@ -240,15 +252,21 @@ Snowflake:
 | `dimension.is_time` | No equivalent field — silently dropped, cosmetic only | Preserved — becomes a `time_dimensions` entry instead of a plain `dimensions` one |
 | Dataset-level `description` | Dropped — no per-source comment field | Preserved — each table keeps its own `description` |
 | `label` | Becomes `display_name` | Dropped — no display-name equivalent |
-| Conversion bugs | None found — conversion is clean, verified against a real workspace end to end | None in the *local* conversion step, but the raw output isn't directly deployable — needs `_prepare_semantic_model`'s two fixes (`base_table` qualifying, metrics re-nested per-table) before `CREATE SEMANTIC VIEW` accepts it; local converter gives zero warning about either |
+| Conversion bugs | None found — conversion is clean, verified against a real workspace end to end | None in the *local* conversion step, but the raw output isn't directly deployable — needs metrics re-nested per-table (`deploy_to_snowflake.py`'s `_nest_metrics_per_table`) before `CREATE SEMANTIC VIEW` accepts it; local converter gives zero warning about it |
 | Query syntax | `SELECT dim, MEASURE(x) FROM view GROUP BY dim` | `SELECT * FROM SEMANTIC_VIEW(view METRICS x DIMENSIONS dim)` — plain SQL, no AI needed (Cortex Analyst NL querying is also available, separately) |
 
 `snowflake/ossie/orders_customers.yaml` and
 `databricks/ossie/orders_customers.yaml` are structurally identical (only
-their explanatory comments differ). `dbt/ossie/orders_customers.yaml`
-differs from both by exactly the one `customer_id` field described above;
-everything else - descriptions, labels, relationships, all 3 metrics - is
-identical across all three files.
+their explanatory comments differ). Both use a literal placeholder,
+`__catalog__.__schema__`, in their `source:` fields — each target's
+`export_*.py` script replaces it with a real catalog/schema from `.env`
+before conversion. `dbt/ossie/orders_customers.yaml` doesn't need this: its
+`source:` (`ossie_demo.main.customers`/`.orders`) is already the real,
+correct location for dbt's local duckdb project (name `ossie_demo`, schema
+`main` — see `dbt/dbt_project.yml`/`dbt/profiles.yml`), so it's left as a
+real value, not a placeholder. Aside from that and the one `customer_id`
+field described above, everything else - descriptions, labels,
+relationships, all 3 metrics - is identical across all three files.
 
 ## Layout
 

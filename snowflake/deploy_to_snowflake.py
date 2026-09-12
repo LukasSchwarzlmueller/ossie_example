@@ -13,32 +13,33 @@ all 3 metrics working, queryable with plain SQL:
       DIMENSIONS customer_segment
     )
 
-`_prepare_semantic_model` below fixes two real gaps in `ossie-snowflake`'s
-raw output that this procedure needs - see NOTES.md for how each was
-found, and for a separate deploy path (Snowflake's native Ossie-file
-upload) that doesn't work yet.
+`_nest_metrics_per_table` below fixes the one real gap in `ossie-snowflake`'s
+raw output that this procedure needs - see NOTES.md for how it was found,
+and for a separate deploy path (Snowflake's native Ossie-file upload) that
+doesn't work yet. (`base_table` qualification is handled earlier, by
+`export_semantic_model.py` replacing the Ossie model's placeholder source
+before conversion - see that script.)
 
 Needs `pip install snowflake-connector-python` / `uv add
 snowflake-connector-python` first - not added to this project's
 dependencies since it's outside the demo's scope.
 
-Creates its own warehouse/database/schema (DATABASE/SCHEMA/WAREHOUSE
-constants below - edit if you'd rather point at existing ones). Auth
-comes from the environment - copy .env.example to .env and fill in real
-values (.env is gitignored, never commit it). This script loads .env
-itself, so just:
+Creates its own warehouse/database/schema - SNOWFLAKE_DATABASE/
+SNOWFLAKE_SCHEMA from .env (default `OSSIE_DEMO`/`PUBLIC`), the same two
+vars `export_semantic_model.py` reads to qualify `semantic_model.yaml`, so
+export and deploy can't target different places. Auth comes from the
+environment too - copy .env.example to .env and fill in real values (.env
+is gitignored, never commit it). This script loads .env itself, so just:
     uv run python3 snowflake/deploy_to_snowflake.py
 """
 
 import os
-from pathlib import Path
 
 import snowflake.connector
 import yaml
 
-REPO_ROOT = Path(__file__).parent.parent
-DATABASE = "OSSIE_DEMO"
-SCHEMA = "PUBLIC"
+from common.env import REPO_ROOT, load_env_file
+
 WAREHOUSE = "OSSIE_COMPUTE_WH"  # deliberately not "<DATABASE>_WH" - too easy to misread as the database
 SEMANTIC_MODEL_FILE = "semantic_model.yaml"
 # `ossie-snowflake` doesn't attribute metrics to a table; this demo's metrics
@@ -46,28 +47,14 @@ SEMANTIC_MODEL_FILE = "semantic_model.yaml"
 METRICS_TABLE = "orders"
 
 
-def _load_env_file(path: Path) -> None:
-    """Set env vars from a `KEY=value` file, without overriding ones already set."""
-    if not path.exists():
-        return
-    for line in path.read_text().splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, _, value = line.partition("=")
-        os.environ.setdefault(key.strip(), value.strip())
-
-
-def _prepare_semantic_model(semantic_model_yaml: str, database: str, schema: str) -> str:
+def _nest_metrics_per_table(semantic_model_yaml: str) -> str:
     """Fix up ossie-snowflake's raw output for SYSTEM$CREATE_SEMANTIC_VIEW_FROM_YAML.
 
-    Two real gaps: base_table still points at the placeholder source path,
-    and metrics need nesting inside their owning table - see NOTES.md.
+    Metrics need nesting inside their owning table, not one top-level list
+    - see NOTES.md. (base_table qualification already happened at export
+    time, so nothing to do here for that.)
     """
     doc = yaml.safe_load(semantic_model_yaml)
-    for table in doc.get("tables", []):
-        table["base_table"]["database"] = database
-        table["base_table"]["schema"] = schema
 
     metrics = doc.pop("metrics", None)
     if metrics:
@@ -82,8 +69,7 @@ def _prepare_semantic_model(semantic_model_yaml: str, database: str, schema: str
 
 
 def main() -> None:
-    _load_env_file(REPO_ROOT / ".env")
-
+    load_env_file()
     account = os.environ.get("SNOWFLAKE_ACCOUNT")
     user = os.environ.get("SNOWFLAKE_USER")
     password = os.environ.get("SNOWFLAKE_PASSWORD")
@@ -91,12 +77,21 @@ def main() -> None:
         raise SystemExit(
             "SNOWFLAKE_ACCOUNT / SNOWFLAKE_USER / SNOWFLAKE_PASSWORD not fully set - check .env"
         )
+    database = os.environ.get("SNOWFLAKE_DATABASE", "OSSIE_DEMO")
+    schema = os.environ.get("SNOWFLAKE_SCHEMA", "PUBLIC")
 
     semantic_model_path = REPO_ROOT / "snowflake" / SEMANTIC_MODEL_FILE
     if not semantic_model_path.exists():
         raise SystemExit(
             f"snowflake/{SEMANTIC_MODEL_FILE} not found - run "
             "'uv run python3 snowflake/export_semantic_model.py' first."
+        )
+    semantic_model_yaml = semantic_model_path.read_text()
+    if f"database: {database}" not in semantic_model_yaml:
+        raise SystemExit(
+            f"snowflake/{SEMANTIC_MODEL_FILE} isn't qualified for {database}.{schema} - "
+            "run 'uv run python3 snowflake/export_semantic_model.py' first "
+            "(it reads the same SNOWFLAKE_DATABASE/SNOWFLAKE_SCHEMA from .env)."
         )
 
     role = os.environ.get("SNOWFLAKE_ROLE")  # optional; falls back to your default role
@@ -113,13 +108,13 @@ def main() -> None:
     )
     cur.execute(f"USE WAREHOUSE {WAREHOUSE}")
 
-    print(f"Creating database/schema {DATABASE}.{SCHEMA} if missing...")
-    cur.execute(f"CREATE DATABASE IF NOT EXISTS {DATABASE}")
-    cur.execute(f"CREATE SCHEMA IF NOT EXISTS {DATABASE}.{SCHEMA}")
+    print(f"Creating database/schema {database}.{schema} if missing...")
+    cur.execute(f"CREATE DATABASE IF NOT EXISTS {database}")
+    cur.execute(f"CREATE SCHEMA IF NOT EXISTS {database}.{schema}")
 
     print("Creating + populating tables (same rows as models/*.sql locally)...")
     cur.execute(f"""
-        CREATE OR REPLACE TABLE {DATABASE}.{SCHEMA}.customers AS
+        CREATE OR REPLACE TABLE {database}.{schema}.customers AS
         SELECT * FROM (VALUES
             (1, 'Alice Anders', 'enterprise'),
             (2, 'Bob Baker', 'smb'),
@@ -127,7 +122,7 @@ def main() -> None:
         ) AS t(customer_id, customer_name, customer_segment)
     """)
     cur.execute(f"""
-        CREATE OR REPLACE TABLE {DATABASE}.{SCHEMA}.orders AS
+        CREATE OR REPLACE TABLE {database}.{schema}.orders AS
         SELECT * FROM (VALUES
             (101, 1, DATE'2026-01-05', 250.00),
             (102, 1, DATE'2026-02-10', 90.50),
@@ -136,12 +131,12 @@ def main() -> None:
         ) AS t(order_id, customer_id, order_date, order_amount)
     """)
 
-    prepared_yaml = _prepare_semantic_model(semantic_model_path.read_text(), DATABASE, SCHEMA)
-    print(f"Creating native Semantic View in {DATABASE}.{SCHEMA} "
-          f"(base_table qualified, metrics nested under '{METRICS_TABLE}')...")
+    prepared_yaml = _nest_metrics_per_table(semantic_model_yaml)
+    print(f"Creating native Semantic View in {database}.{schema} "
+          f"(metrics nested under '{METRICS_TABLE}')...")
     cur.execute(f"""
         CALL SYSTEM$CREATE_SEMANTIC_VIEW_FROM_YAML(
-          '{DATABASE}.{SCHEMA}',
+          '{database}.{schema}',
           $$
 {prepared_yaml}
           $$
@@ -151,7 +146,7 @@ def main() -> None:
 
     print("Done. Query it with:")
     print("  SELECT * FROM SEMANTIC_VIEW(")
-    print(f"    {DATABASE}.{SCHEMA}.sales_demo")
+    print(f"    {database}.{schema}.sales_demo")
     print("    METRICS total_revenue, order_count, avg_order_value")
     print("    DIMENSIONS customer_segment")
     print("  )")

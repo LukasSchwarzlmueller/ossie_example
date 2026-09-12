@@ -173,13 +173,17 @@ procedure — a native, SQL-queryable `CREATE SEMANTIC VIEW`, no stage or
 Cortex Analyst call needed.
 
 Two real gaps between what the converter emits and what this procedure
-needs, both handled by `_prepare_semantic_model`:
+needs:
 
-1. **`base_table` needs qualifying.** The converter bakes in the
-   placeholder source path (`OSSIE_DEMO.MAIN`, from `ossie_demo.main.orders`)
-   rather than where tables actually get created. Same class of bug as
-   Databricks' `LOCAL_QUALIFIER`, just structural here (separate
-   `database`/`schema`/`table` keys) instead of a string replace.
+1. **`base_table` needs qualifying.** The converter parses `source:`'s
+   dotted string straight into `base_table.database`/`.schema`/`.table` -
+   whatever's in the Ossie file ends up there verbatim. Fixed upstream of
+   the converter, not after it: `snowflake/ossie/orders_customers.yaml`'s
+   `source:` fields hold a literal placeholder (`__catalog__.__schema__`),
+   and `export_semantic_model.py` replaces it with
+   `SNOWFLAKE_DATABASE`/`SNOWFLAKE_SCHEMA` (from `.env`) before conversion
+   - so `semantic_model.yaml` comes out of export already qualified, same
+   idea as Databricks' placeholder replace in `export_metric_view.py`.
 2. **Metrics must be nested inside their owning table, not one top-level
    list.** `ossie-snowflake` emits `metrics:` as a sibling of
    `tables:`/`relationships:`. Snowflake's native schema rejects that
