@@ -1,0 +1,163 @@
+{
+  "name": "sales_demo",
+  "compatibilityLevel": 1702,
+  "model": {
+    "tables": [
+      {
+        "name": "customers",
+        "columns": [
+          {
+            "name": "customer_id",
+            "sourceColumn": "customer_id",
+            "dataType": "int64",
+            "isKey": true
+          },
+          {
+            "name": "customer_name",
+            "type": "calculated",
+            "expression": "UPPER(customers[customer_name])",
+            "dataType": "string"
+          },
+          {
+            "name": "customer_segment",
+            "sourceColumn": "customer_segment",
+            "dataType": "string",
+            "annotations": [
+              {
+                "name": "OssieAIContext",
+                "value": "{\"instructions\": \"Splits customers into Enterprise and SMB. Sales commissions and the CEO's board deck are both based on this.\"}"
+              }
+            ]
+          }
+        ],
+        "description": "One row per customer",
+        "partitions": [
+          {
+            "name": "customers",
+            "mode": "directLake",
+            "source": {
+              "type": "entity",
+              "entityName": "customers",
+              "schemaName": "dbo",
+              "expressionSource": "DatabaseQuery"
+            }
+          }
+        ]
+      },
+      {
+        "name": "orders",
+        "columns": [
+          {
+            "name": "order_id",
+            "sourceColumn": "order_id",
+            "dataType": "int64",
+            "isKey": true
+          },
+          {
+            "name": "customer_id",
+            "sourceColumn": "customer_id",
+            "dataType": "int64"
+          },
+          {
+            "name": "order_date",
+            "sourceColumn": "order_date",
+            "dataType": "dateTime",
+            "formatString": "yyyy-mm-dd"
+          },
+          {
+            "name": "order_amount",
+            "sourceColumn": "order_amount",
+            "dataType": "decimal",
+            "annotations": [
+              {
+                "name": "OssieAIContext",
+                "value": "{\"synonyms\": [\"amount\", \"order total\", \"order value\"]}"
+              }
+            ]
+          }
+        ],
+        "description": "One row per order, references customers via customer_id",
+        "partitions": [
+          {
+            "name": "orders",
+            "mode": "directLake",
+            "source": {
+              "type": "entity",
+              "entityName": "orders",
+              "schemaName": "dbo",
+              "expressionSource": "DatabaseQuery"
+            }
+          }
+        ],
+        "measures": [
+          {
+            "name": "total_revenue",
+            "expression": "SUM('orders'[order_amount])",
+            "description": "Total revenue across all orders",
+            "annotations": [
+              {
+                "name": "OssieExpressionDialect",
+                "value": "ANSI_SQL"
+              },
+              {
+                "name": "OssieExpression",
+                "value": "SUM(order_amount)"
+              },
+              {
+                "name": "OssieAIContext",
+                "value": "{\"synonyms\": [\"revenue\", \"sales\"]}"
+              }
+            ]
+          },
+          {
+            "name": "order_count",
+            "expression": "COUNTROWS(orders)",
+            "description": "Number of orders"
+          },
+          {
+            "name": "avg_order_value",
+            "expression": "AVERAGE('orders'[order_amount])",
+            "description": "Average order value",
+            "annotations": [
+              {
+                "name": "OssieExpressionDialect",
+                "value": "ANSI_SQL"
+              },
+              {
+                "name": "OssieExpression",
+                "value": "AVG(order_amount)"
+              },
+              {
+                "name": "OssieAIContext",
+                "value": "{\"instructions\": \"This is the number the CEO checks every Monday.\", \"synonyms\": [\"AOV\", \"average order value\", \"average purchase value\"]}"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "expressions": [
+      {
+        "name": "DatabaseQuery",
+        "kind": "m",
+        "expression": [
+          "let",
+          "    Source = AzureStorage.DataLake(\"https://onelake.dfs.fabric.microsoft.com/00000000-0000-0000-0000-000000000000/00000000-0000-0000-0000-000000000000\")",
+          "in",
+          "    Source"
+        ]
+      }
+    ],
+    "description": "Minimal orders/customers demo model for the OSI meetup talk",
+    "relationships": [
+      {
+        "name": "orders_to_customers",
+        "fromTable": "orders",
+        "fromColumn": "customer_id",
+        "toTable": "customers",
+        "toColumn": "customer_id"
+      }
+    ],
+    "culture": "en-US"
+  }
+}

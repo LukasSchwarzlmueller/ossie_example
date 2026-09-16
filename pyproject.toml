@@ -32,6 +32,8 @@ ossie-omni = { git = "https://github.com/apache/ossie", subdirectory = "converte
 apache-ossie-gooddata = { git = "https://github.com/apache/ossie", subdirectory = "converters/gooddata", rev = "b5da5d66f0da4a0cd3388d52201dbf5523221a77" }
 honeydew-ossie = { git = "https://github.com/apache/ossie", subdirectory = "converters/honeydew", rev = "b5da5d66f0da4a0cd3388d52201dbf5523221a77" }
 apache-ossie-wisdom = { git = "https://github.com/apache/ossie", subdirectory = "converters/wisdom", rev = "b5da5d66f0da4a0cd3388d52201dbf5523221a77" }
+# Merged today (2026-09-16, PR #329); not present at the shared rev above, so pinned separately to main's current tip.
+apache-ossie-microsoft = { git = "https://github.com/apache/ossie", subdirectory = "converters/microsoft", rev = "cc919e9e3818f5e0b798aa081345630d5af57b64" }
 
 [dependency-groups]
 dev = [
@@ -40,6 +42,7 @@ dev = [
     "apache-ossie-snowflake",
     "apache-ossie-wisdom",
     "apache-ossie-dbt",
+    "apache-ossie-microsoft",
     "databricks-sdk>=0.133.0",
     "dbt-core>=1.12.3",
     "dbt-duckdb>=1.11.0",

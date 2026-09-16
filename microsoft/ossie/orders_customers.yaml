@@ -24,6 +24,8 @@ semantic_model:
             expression: "INITCAP(customer_name)"
           - dialect: DATABRICKS
             expression: "LOWER(customers.customer_name)"
+          - dialect: DAX
+            expression: "UPPER(customers[customer_name])"
       label: Customer Name
       datatype: String
     - name: customer_segment
@@ -96,13 +98,21 @@ semantic_model:
       synonyms:
       - revenue
       - sales
+    custom_extensions:
+    - vendor_name: POWER_BI
+      data: '{"table": "orders"}'
   - name: order_count
     expression:
       dialects:
       - dialect: ANSI_SQL
         expression: COUNT(*)
+      - dialect: DAX
+        expression: "COUNTROWS(orders)"
     description: Number of orders
     datatype: Integer
+    custom_extensions:
+    - vendor_name: POWER_BI
+      data: '{"table": "orders"}'
   - name: avg_order_value
     expression:
       dialects:
@@ -116,3 +126,6 @@ semantic_model:
       - average order value
       - average purchase value
       instructions: This is the number the CEO checks every Monday.
+    custom_extensions:
+    - vendor_name: POWER_BI
+      data: '{"table": "orders"}'
