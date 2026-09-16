@@ -75,6 +75,12 @@ dependencies = [
     { name = "sqlglot" },
 ]
 
+[package.optional-dependencies]
+tom = [
+    { name = "clr-loader" },
+    { name = "pythonnet" },
+]
+
 [[package]]
 name = "apache-ossie-nvidia-gsf"
 version = "0.1.0.dev0"
@@ -328,6 +334,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/76/d4/81420972a676e8ffea40450d8c8c92943e7218a78fe9b64359836cc9876b/click-8.4.2.tar.gz", hash = "sha256:9a6cea6e60b17ebe0a44c5cc636d94f09bd66142c1cd7d8b4cd731c4917a15f6", size = 338000, upload-time = "2026-06-24T17:45:15.148Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/fb/e2/79c688af8b210d232694e31e59da9f6ec747bae31c3f5946e4e9b98860d5/click-8.4.2-py3-none-any.whl", hash = "sha256:e6f9f66136c816745b9d65817da91d61d957fb16e02e4dcd0552553c5a197b76", size = 119243, upload-time = "2026-06-24T17:45:13.73Z" },
+]
+
+[[package]]
+name = "clr-loader"
+version = "0.3.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cffi" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e4/46/7eea92b6aa2d68af78e049cbecec5f757f1aad44ecdecdc16bbad7eead51/clr_loader-0.3.1.tar.gz", hash = "sha256:2e073e9aaf49d1ae2f56ecba27987ad5fb68be4bcd9dd34a5bed8f0e4e128366", size = 86805, upload-time = "2026-04-18T17:49:44.287Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5e/da/ec1a6e36624000b6df0dd61183c42342ee5814c073315e802cadaad04d2f/clr_loader-0.3.1-py3-none-any.whl", hash = "sha256:cbad189de20d202a7d621956b0fc38049e13c9bf7ca2923441eff725cd121aa1", size = 55730, upload-time = "2026-04-18T17:49:42.99Z" },
 ]
 
 [[package]]
@@ -887,7 +905,7 @@ dependencies = [
 dev = [
     { name = "apache-ossie-dbt" },
     { name = "apache-ossie-gooddata" },
-    { name = "apache-ossie-microsoft" },
+    { name = "apache-ossie-microsoft", extra = ["tom"] },
     { name = "apache-ossie-nvidia-gsf" },
     { name = "apache-ossie-snowflake" },
     { name = "apache-ossie-wisdom" },
@@ -910,7 +928,7 @@ requires-dist = [
 dev = [
     { name = "apache-ossie-dbt", git = "https://github.com/apache/ossie?subdirectory=converters%2Fdbt&rev=b5da5d66f0da4a0cd3388d52201dbf5523221a77" },
     { name = "apache-ossie-gooddata", git = "https://github.com/apache/ossie?subdirectory=converters%2Fgooddata&rev=b5da5d66f0da4a0cd3388d52201dbf5523221a77" },
-    { name = "apache-ossie-microsoft", git = "https://github.com/apache/ossie?subdirectory=converters%2Fmicrosoft&rev=cc919e9e3818f5e0b798aa081345630d5af57b64" },
+    { name = "apache-ossie-microsoft", extras = ["tom"], git = "https://github.com/apache/ossie?subdirectory=converters%2Fmicrosoft&rev=cc919e9e3818f5e0b798aa081345630d5af57b64" },
     { name = "apache-ossie-nvidia-gsf", git = "https://github.com/apache/ossie?subdirectory=converters%2Fnvidia&rev=b5da5d66f0da4a0cd3388d52201dbf5523221a77" },
     { name = "apache-ossie-snowflake", git = "https://github.com/apache/ossie?subdirectory=converters%2Fsnowflake&rev=b5da5d66f0da4a0cd3388d52201dbf5523221a77" },
     { name = "apache-ossie-wisdom", git = "https://github.com/apache/ossie?subdirectory=converters%2Fwisdom&rev=b5da5d66f0da4a0cd3388d52201dbf5523221a77" },
@@ -1119,6 +1137,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/87/c7/5e1547c44e31da50a460df93af11a535ace568ef89d7a811069ead340c4a/python-slugify-8.0.4.tar.gz", hash = "sha256:59202371d1d05b54a9e7720c5e038f928f45daaffe41dd10822f3907b937c856", size = 10921, upload-time = "2024-02-08T18:32:45.488Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a4/62/02da182e544a51a5c3ccf4b03ab79df279f9c60c5e82d5e8bec7ca26ac11/python_slugify-8.0.4-py2.py3-none-any.whl", hash = "sha256:276540b79961052b66b7d116620b36518847f52d5fd9e3a70164fc8c50faa6b8", size = 10051, upload-time = "2024-02-08T18:32:43.911Z" },
+]
+
+[[package]]
+name = "pythonnet"
+version = "3.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "clr-loader" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/05/57/da1992e44663b71365c6e842c8d7fa453d4ec45fb99a68cfee5b7e944d3c/pythonnet-3.1.0.tar.gz", hash = "sha256:7b34c382905d10a371509ffafd64cae0416305c28817738a9cd138336f4e9991", size = 250599, upload-time = "2026-05-23T20:30:21.578Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ac/4b/52414f442624d2589f5374a48c08d5ae94f24bea67fc13a20a752884e5b7/pythonnet-3.1.0-cp310.cp311.cp312.cp313.cp314-none-any.whl", hash = "sha256:698dd88edc198819ad63b624a6ebe76208c7b46e4fe13626f65e484f0358d6ba", size = 217578, upload-time = "2026-05-23T20:30:19.527Z" },
+    { url = "https://files.pythonhosted.org/packages/db/67/031124fdcb937c266a3265118525bbf6dc13b8c79786d6a7290aecb6e7bb/pythonnet-3.1.0-cp310.cp311.cp312.cp313.cp314-none-win32.win_amd64.whl", hash = "sha256:7bdd4de03df3547a48122a3989265c8b31d5be0d19dadffa009eec7df8085e0b", size = 1644898, upload-time = "2026-05-23T20:30:16.213Z" },
 ]
 
 [[package]]

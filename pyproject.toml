@@ -42,7 +42,7 @@ dev = [
     "apache-ossie-snowflake",
     "apache-ossie-wisdom",
     "apache-ossie-dbt",
-    "apache-ossie-microsoft",
+    "apache-ossie-microsoft[tom]",
     "databricks-sdk>=0.133.0",
     "dbt-core>=1.12.3",
     "dbt-duckdb>=1.11.0",

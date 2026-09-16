@@ -92,17 +92,9 @@
         "measures": [
           {
             "name": "total_revenue",
-            "expression": "SUM('orders'[order_amount])",
+            "expression": "SUM(orders[order_amount])",
             "description": "Total revenue across all orders",
             "annotations": [
-              {
-                "name": "OssieExpressionDialect",
-                "value": "ANSI_SQL"
-              },
-              {
-                "name": "OssieExpression",
-                "value": "SUM(order_amount)"
-              },
               {
                 "name": "OssieAIContext",
                 "value": "{\"synonyms\": [\"revenue\", \"sales\"]}"

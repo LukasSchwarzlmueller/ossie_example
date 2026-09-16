@@ -92,6 +92,8 @@ semantic_model:
       dialects:
       - dialect: ANSI_SQL
         expression: SUM(order_amount)
+      - dialect: DAX
+        expression: "SUM(orders[order_amount])"
     description: Total revenue across all orders
     datatype: Decimal
     ai_context:
