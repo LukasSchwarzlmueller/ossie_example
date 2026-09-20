@@ -25,29 +25,28 @@ uv sync
 cd dbt
 uv run dbt run                                     # builds the tables
 uv run scripts/export_metric_view.py               # Ossie -> semantic_manifest.json
-uv run scripts/patch_manifest_for_mf_query.py       # works around 3 converter bugs, see NOTES.md
-uv run mf query --metrics total_revenue,avg_order_value --group-by customer_id__customer_segment
+uv run scripts/patch_manifest_for_mf_query.py       # works around 4 converter bugs, see NOTES.md
+uv run mf query --metrics total_revenue,avg_order_value,order_count --group-by customer_id__customer_segment
 cd ..
 ```
 
 ```
-customer_id__customer_segment      total_revenue    avg_order_value
--------------------------------  ---------------  -----------------
-smb                                        40                40
-enterprise                                950.75            316.917
+customer_id__customer_segment      total_revenue    avg_order_value    order_count
+-------------------------------  ---------------  -----------------  -------------
+smb                                        40                40                  1
+enterprise                                950.75            316.917              3
 ```
 
-`apache-ossie-dbt`'s converter has 3 real bugs, patched by the script
+`apache-ossie-dbt`'s converter has 4 real bugs, patched by the script
 above (see NOTES.md for how each was found):
 - no `agg_time_dimension` is ever set
 - `order_count` attaches to the wrong semantic model
 - no time spine is ever configured
+- `COUNT(*)` is emitted as `expr: '*'`, which compiles to invalid SQL
 
 Re-run the patch step before any further `mf` call after re-running
 `export_metric_view.py` or any `dbt` command - it edits a generated file
-that gets silently overwritten. `order_count` is still not queryable even
-patched (a separate DuckDB code-generation bug) - stick to
-`total_revenue`/`avg_order_value`.
+that gets silently overwritten.
 
 ## Databricks
 

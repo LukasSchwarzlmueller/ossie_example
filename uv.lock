@@ -32,7 +32,7 @@ wheels = [
 [[package]]
 name = "apache-ossie"
 version = "0.2.0.dev0"
-source = { git = "https://github.com/apache/ossie?subdirectory=python&rev=b5da5d66f0da4a0cd3388d52201dbf5523221a77#b5da5d66f0da4a0cd3388d52201dbf5523221a77" }
+source = { git = "https://github.com/apache/ossie?subdirectory=python&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c#a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
 dependencies = [
     { name = "pydantic" },
     { name = "pyyaml" },
@@ -41,7 +41,7 @@ dependencies = [
 [[package]]
 name = "apache-ossie-databricks"
 version = "0.2.0.dev0"
-source = { git = "https://github.com/apache/ossie?subdirectory=converters%2Fdatabricks&rev=b5da5d66f0da4a0cd3388d52201dbf5523221a77#b5da5d66f0da4a0cd3388d52201dbf5523221a77" }
+source = { git = "https://github.com/apache/ossie?subdirectory=converters%2Fdatabricks&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c#a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
 dependencies = [
     { name = "pyyaml" },
 ]
@@ -49,7 +49,7 @@ dependencies = [
 [[package]]
 name = "apache-ossie-dbt"
 version = "0.2.0.dev0"
-source = { git = "https://github.com/apache/ossie?subdirectory=converters%2Fdbt&rev=b5da5d66f0da4a0cd3388d52201dbf5523221a77#b5da5d66f0da4a0cd3388d52201dbf5523221a77" }
+source = { git = "https://github.com/apache/ossie?subdirectory=converters%2Fdbt&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c#a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
 dependencies = [
     { name = "apache-ossie" },
     { name = "jinja2" },
@@ -61,7 +61,15 @@ dependencies = [
 [[package]]
 name = "apache-ossie-gooddata"
 version = "0.2.0.dev0"
-source = { git = "https://github.com/apache/ossie?subdirectory=converters%2Fgooddata&rev=b5da5d66f0da4a0cd3388d52201dbf5523221a77#b5da5d66f0da4a0cd3388d52201dbf5523221a77" }
+source = { git = "https://github.com/apache/ossie?subdirectory=converters%2Fgooddata&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c#a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
+dependencies = [
+    { name = "pyyaml" },
+]
+
+[[package]]
+name = "apache-ossie-honeydew"
+version = "0.2.0.dev0"
+source = { git = "https://github.com/apache/ossie?subdirectory=converters%2Fhoneydew&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c#a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
 dependencies = [
     { name = "pyyaml" },
 ]
@@ -69,7 +77,7 @@ dependencies = [
 [[package]]
 name = "apache-ossie-microsoft"
 version = "0.2.0.dev0"
-source = { git = "https://github.com/apache/ossie?subdirectory=converters%2Fmicrosoft&rev=cc919e9e3818f5e0b798aa081345630d5af57b64#cc919e9e3818f5e0b798aa081345630d5af57b64" }
+source = { git = "https://github.com/apache/ossie?subdirectory=converters%2Fmicrosoft&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c#a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
 dependencies = [
     { name = "pyyaml" },
     { name = "sqlglot" },
@@ -84,7 +92,7 @@ tom = [
 [[package]]
 name = "apache-ossie-nvidia-gsf"
 version = "0.1.0.dev0"
-source = { git = "https://github.com/apache/ossie?subdirectory=converters%2Fnvidia&rev=b5da5d66f0da4a0cd3388d52201dbf5523221a77#b5da5d66f0da4a0cd3388d52201dbf5523221a77" }
+source = { git = "https://github.com/apache/ossie?subdirectory=converters%2Fnvidia&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c#a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
 dependencies = [
     { name = "pyyaml" },
     { name = "sqlglot" },
@@ -93,7 +101,7 @@ dependencies = [
 [[package]]
 name = "apache-ossie-snowflake"
 version = "0.2.0.dev0"
-source = { git = "https://github.com/apache/ossie?subdirectory=converters%2Fsnowflake&rev=b5da5d66f0da4a0cd3388d52201dbf5523221a77#b5da5d66f0da4a0cd3388d52201dbf5523221a77" }
+source = { git = "https://github.com/apache/ossie?subdirectory=converters%2Fsnowflake&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c#a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
 dependencies = [
     { name = "pyyaml" },
 ]
@@ -101,7 +109,7 @@ dependencies = [
 [[package]]
 name = "apache-ossie-wisdom"
 version = "0.2.0.dev0"
-source = { git = "https://github.com/apache/ossie?subdirectory=converters%2Fwisdom&rev=b5da5d66f0da4a0cd3388d52201dbf5523221a77#b5da5d66f0da4a0cd3388d52201dbf5523221a77" }
+source = { git = "https://github.com/apache/ossie?subdirectory=converters%2Fwisdom&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c#a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
 dependencies = [
     { name = "apache-ossie" },
     { name = "pyyaml" },
@@ -476,7 +484,7 @@ wheels = [
 
 [[package]]
 name = "dbt-core"
-version = "1.12.3"
+version = "1.12.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "agate" },
@@ -505,9 +513,9 @@ dependencies = [
     { name = "sqlparse" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/18/a4/4f6d455d7d0dce48c052e6ed67b6f566eae84e7f432aca21f1fcf408126d/dbt_core-1.12.3.tar.gz", hash = "sha256:d608042c9ff034c0e11d06123a00b79cdf21b12068aac580e90e8326f1872c52", size = 1033601, upload-time = "2026-08-21T00:29:47.618Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/87/4b/92569e1b74c81578d4c699ce1ad04b47084d6cc78e6d9846a17c8536fba1/dbt_core-1.12.5.tar.gz", hash = "sha256:f17f662aed7b6a8b0d267ecf07448ad1ec03edf147a52abbdf5ee48d25999bb6", size = 1036303, upload-time = "2026-09-15T19:08:28.036Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e3/72/c34e187ef55d429fac3655ee7234a1392cae0fe7364733239ea6ef3c321a/dbt_core-1.12.3-py3-none-any.whl", hash = "sha256:3f4ea56be117ec579ae183389ef7107a3969e959ea9efc28f3499e46d089b753", size = 1130274, upload-time = "2026-08-21T00:29:46.184Z" },
+    { url = "https://files.pythonhosted.org/packages/98/8e/90f07667fdc1b448f167a48f53bc0db3641cd4eb9ab5f1af2c1a2171f754/dbt_core-1.12.5-py3-none-any.whl", hash = "sha256:77661a8c9ee1d1ec7a8ed904d15a0937289d12ba6fd2d86d6f36d3eea735ce3d", size = 1132717, upload-time = "2026-09-15T19:08:26.36Z" },
 ]
 
 [[package]]
@@ -556,7 +564,7 @@ wheels = [
 
 [[package]]
 name = "dbt-metricflow"
-version = "0.14.0"
+version = "0.15.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -566,9 +574,9 @@ dependencies = [
     { name = "metricflow" },
     { name = "update-checker" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/14/bd/31822a2eb948e4211b630a46dcf42d01f95c939cc4993e407a2d7647d596/dbt_metricflow-0.14.0.tar.gz", hash = "sha256:0e89a5c74964f66776ca6e97d64d869f96844db7906abf4f206c8c5f024bf78a", size = 53039, upload-time = "2026-08-19T20:46:18.6Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/97/3f/b48ee970dd105a005be7b7d9fee3bee6d0fbbc0f26f9bab30b383befc74b/dbt_metricflow-0.15.0.tar.gz", hash = "sha256:d8bcc7bd979d6b5d09cec7683a78ce66a5d8508a6cbb82f592b686138b3176d0", size = 53357, upload-time = "2026-09-10T20:36:52.051Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/24/e8/157af9d427442a238d9790de56655fb8a86c5623c9514ca1ab9fc020e8e8/dbt_metricflow-0.14.0-py3-none-any.whl", hash = "sha256:0d6e15e8c15ef062c1054db67fd997901c57df54fa532730d66e4d26161b095f", size = 43823, upload-time = "2026-08-19T20:46:17.114Z" },
+    { url = "https://files.pythonhosted.org/packages/f0/68/f67e04fed205b356a5fa96a466e2e4aacb460d91a547644ea6a9005a2965/dbt_metricflow-0.15.0-py3-none-any.whl", hash = "sha256:470d5503530734b482675945d8d62a06f9f4797fa8cbd477be9e65e708248612", size = 44146, upload-time = "2026-09-10T20:36:50.593Z" },
 ]
 
 [[package]]
@@ -644,14 +652,6 @@ dependencies = [
     { name = "termcolor" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/ee/48/d53580d30b1fabf25d0d1fcc3f5b26d08d2ac75a1890ff6d262f9f027436/halo-0.0.31.tar.gz", hash = "sha256:7b67a3521ee91d53b7152d4ee3452811e1d2a6321975137762eb3d70063cc9d6", size = 11666, upload-time = "2020-11-10T02:36:48.335Z" }
-
-[[package]]
-name = "honeydew-ossie"
-version = "0.2.0.dev0"
-source = { git = "https://github.com/apache/ossie?subdirectory=converters%2Fhoneydew&rev=b5da5d66f0da4a0cd3388d52201dbf5523221a77#b5da5d66f0da4a0cd3388d52201dbf5523221a77" }
-dependencies = [
-    { name = "pyyaml" },
-]
 
 [[package]]
 name = "idna"
@@ -801,7 +801,7 @@ msgpack = [
 
 [[package]]
 name = "metricflow"
-version = "0.212.0"
+version = "0.213.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "importlib-metadata" },
@@ -817,9 +817,9 @@ dependencies = [
     { name = "tabulate" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/12/0f/3b5fbe244d36f40481b6eef67f66aaa6d48624e0935db6df83d1c479933c/metricflow-0.212.0.tar.gz", hash = "sha256:d85a4d2a37791e2215a5aad373bf50721191b223102ffe9318d8326b926eeadc", size = 639958, upload-time = "2026-08-12T23:52:18.907Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a6/ae/0c75d87f004cd56f30862fa1330f6a4e36a26ea32463a6d17d5d1ab32413/metricflow-0.213.0.tar.gz", hash = "sha256:e6b5e8f05a0b9b0183430416052a61747fc89f809c39f2cdc5a3d9ba7a3f6931", size = 643641, upload-time = "2026-09-10T19:24:20.562Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ba/27/47c0c48f4467bf9e08d793f37df6e89d6776dca2347eba804bb8170139f6/metricflow-0.212.0-py3-none-any.whl", hash = "sha256:80bb3cfbd9d7c9190702f3b13b9de202cb723d3ff583f1116aeff07eeaed9e1d", size = 994084, upload-time = "2026-08-12T23:52:17.189Z" },
+    { url = "https://files.pythonhosted.org/packages/58/6c/2ec7e3c433bdab3cf15f4424769794f6d0dab9ecd3c43da00cdb85435d44/metricflow-0.213.0-py3-none-any.whl", hash = "sha256:6e1865535a200607529970f6ca1a9fcd22b7814d0b71cd654d9ee01eecf0157b", size = 999530, upload-time = "2026-09-10T19:24:17.846Z" },
 ]
 
 [[package]]
@@ -905,6 +905,7 @@ dependencies = [
 dev = [
     { name = "apache-ossie-dbt" },
     { name = "apache-ossie-gooddata" },
+    { name = "apache-ossie-honeydew" },
     { name = "apache-ossie-microsoft", extra = ["tom"] },
     { name = "apache-ossie-nvidia-gsf" },
     { name = "apache-ossie-snowflake" },
@@ -913,37 +914,36 @@ dev = [
     { name = "dbt-core" },
     { name = "dbt-duckdb" },
     { name = "dbt-metricflow" },
-    { name = "honeydew-ossie" },
     { name = "ossie-omni" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "apache-ossie", git = "https://github.com/apache/ossie?subdirectory=python&rev=b5da5d66f0da4a0cd3388d52201dbf5523221a77" },
-    { name = "apache-ossie-databricks", git = "https://github.com/apache/ossie?subdirectory=converters%2Fdatabricks&rev=b5da5d66f0da4a0cd3388d52201dbf5523221a77" },
+    { name = "apache-ossie", git = "https://github.com/apache/ossie?subdirectory=python&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" },
+    { name = "apache-ossie-databricks", git = "https://github.com/apache/ossie?subdirectory=converters%2Fdatabricks&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" },
     { name = "snowflake-connector-python", specifier = ">=4.7.2" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "apache-ossie-dbt", git = "https://github.com/apache/ossie?subdirectory=converters%2Fdbt&rev=b5da5d66f0da4a0cd3388d52201dbf5523221a77" },
-    { name = "apache-ossie-gooddata", git = "https://github.com/apache/ossie?subdirectory=converters%2Fgooddata&rev=b5da5d66f0da4a0cd3388d52201dbf5523221a77" },
-    { name = "apache-ossie-microsoft", extras = ["tom"], git = "https://github.com/apache/ossie?subdirectory=converters%2Fmicrosoft&rev=cc919e9e3818f5e0b798aa081345630d5af57b64" },
-    { name = "apache-ossie-nvidia-gsf", git = "https://github.com/apache/ossie?subdirectory=converters%2Fnvidia&rev=b5da5d66f0da4a0cd3388d52201dbf5523221a77" },
-    { name = "apache-ossie-snowflake", git = "https://github.com/apache/ossie?subdirectory=converters%2Fsnowflake&rev=b5da5d66f0da4a0cd3388d52201dbf5523221a77" },
-    { name = "apache-ossie-wisdom", git = "https://github.com/apache/ossie?subdirectory=converters%2Fwisdom&rev=b5da5d66f0da4a0cd3388d52201dbf5523221a77" },
+    { name = "apache-ossie-dbt", git = "https://github.com/apache/ossie?subdirectory=converters%2Fdbt&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" },
+    { name = "apache-ossie-gooddata", git = "https://github.com/apache/ossie?subdirectory=converters%2Fgooddata&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" },
+    { name = "apache-ossie-honeydew", git = "https://github.com/apache/ossie?subdirectory=converters%2Fhoneydew&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" },
+    { name = "apache-ossie-microsoft", extras = ["tom"], git = "https://github.com/apache/ossie?subdirectory=converters%2Fmicrosoft&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" },
+    { name = "apache-ossie-nvidia-gsf", git = "https://github.com/apache/ossie?subdirectory=converters%2Fnvidia&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" },
+    { name = "apache-ossie-snowflake", git = "https://github.com/apache/ossie?subdirectory=converters%2Fsnowflake&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" },
+    { name = "apache-ossie-wisdom", git = "https://github.com/apache/ossie?subdirectory=converters%2Fwisdom&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" },
     { name = "databricks-sdk", specifier = ">=0.133.0" },
-    { name = "dbt-core", specifier = ">=1.12.3" },
+    { name = "dbt-core", specifier = ">=1.12.5" },
     { name = "dbt-duckdb", specifier = ">=1.11.0" },
-    { name = "dbt-metricflow", specifier = ">=0.14.0" },
-    { name = "honeydew-ossie", git = "https://github.com/apache/ossie?subdirectory=converters%2Fhoneydew&rev=b5da5d66f0da4a0cd3388d52201dbf5523221a77" },
-    { name = "ossie-omni", git = "https://github.com/apache/ossie?subdirectory=converters%2Fomni&rev=b5da5d66f0da4a0cd3388d52201dbf5523221a77" },
+    { name = "dbt-metricflow", specifier = ">=0.15.0" },
+    { name = "ossie-omni", git = "https://github.com/apache/ossie?subdirectory=converters%2Fomni&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" },
 ]
 
 [[package]]
 name = "ossie-omni"
 version = "0.2.0.dev0"
-source = { git = "https://github.com/apache/ossie?subdirectory=converters%2Fomni&rev=b5da5d66f0da4a0cd3388d52201dbf5523221a77#b5da5d66f0da4a0cd3388d52201dbf5523221a77" }
+source = { git = "https://github.com/apache/ossie?subdirectory=converters%2Fomni&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c#a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
 dependencies = [
     { name = "pyyaml" },
 ]

@@ -43,7 +43,7 @@ def main() -> None:
             "`python microsoft/export_semantic_model.py --tmdl-folder` first"
         )
 
-    semantic_model = yaml.safe_load(OSSIE_YAML.read_text())["semantic_model"][0]
+    semantic_model = yaml.safe_load(OSSIE_YAML.read_text())
     name = semantic_model["name"]
     description = semantic_model.get("description", "")
 

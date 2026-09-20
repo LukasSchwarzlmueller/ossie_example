@@ -6,7 +6,8 @@ actually run things.
 
 ## dbt: dbt-core's own native OSI loader rejects this repo's model; a separate converter package is used instead
 
-`dbt-core==1.12.3` has a real native OSI loader (`dbt/parser/osi.py`) —
+`dbt-core` (1.12.3 originally; `dbt/parser/osi.py` is byte-identical in
+1.12.5, which this repo now uses) has a real native OSI loader —
 confirmed by reading the source. It requires exactly `version: "0.1.0"` or
 `"0.1.1"` (`dbt.constants.SUPPORTED_OSI_VERSIONS`), `.json` not `.yaml`
 (the loader globs `osi-paths/**/*.json` only — renaming to `.yaml`
@@ -55,6 +56,30 @@ in `[tool.uv.sources]` too - `apache-ossie-gsf` -> `apache-ossie-nvidia-gsf`
 to the latest commit on `main` fails outright before any of that: it also
 tries to move `apache-ossie-gsf` to `converters/gsf`, a path that doesn't
 exist any more at that commit.
+
+**Second round: flat documents, and a second Honeydew rename.** Bumped the
+pin again, to `a5bdbbc...` (upstream `main` as of 2026-09-19), which also
+lets the Microsoft converter share the same pin instead of its own. Two
+things came with it:
+
+- **Flat semantic model documents (upstream #396).** The `semantic_model:`
+  list wrapper is gone: `name`, `description`, `datasets`, `relationships`
+  and `metrics` now sit at the document root, and every converter rejects
+  the old shape outright (`Legacy 'semantic_model' wrappers are not
+  supported`; the dbt converter's typed `OssieDocument` fails validation
+  with `extra_forbidden`). All four `<target>/ossie/orders_customers.yaml`
+  copies were migrated, and `microsoft/package_for_fabric.py`, which read
+  `["semantic_model"][0]` straight from the YAML, needed the same change.
+  Verified by diffing every export against its pre-migration output:
+  `metric_view.yaml`, `semantic_model.yaml`, `model.bim` and the dbt
+  manifest all came out byte-identical, so the migration is
+  format-only. Version stays `0.2.0.dev0`.
+- **`honeydew-ossie` -> `apache-ossie-honeydew`**, the package renamed
+  again after the earlier `honeydew-osi` -> `honeydew-ossie`.
+
+Also upgraded to `dbt-core` 1.12.5, `dbt-metricflow` 0.15.0 and
+`metricflow` 0.213.0 (latest at the time). Nothing about dbt's behaviour
+here changed - see the converter-bugs section below.
 
 One function-level rename outside the dbt converter, found by actually
 re-running every export script after the upgrade rather than assuming it
@@ -135,7 +160,13 @@ qualified. `deploy_to_databricks.py` reads the same two env vars — not to
 qualify anything itself, but to create the underlying tables in the same
 place, and to sanity-check the exported file was qualified for that place
 before deploying it. Same idea, mirrored in `snowflake/export_semantic_model.py`
-(see below).
+(see below) and `dbt/scripts/export_metric_view.py`. The dbt one has no `.env`
+to read (it runs locally): it hardcodes `ossie_demo.main`, the DuckDB catalog
+(file stem of `profiles.yml`'s `path`) and schema. The dbt Ossie copy's
+`source:` fields hold the same placeholder; an export script that skips this
+replace leaves the manifest pointing at `__catalog__.__schema__` and `mf query`
+fails with `Catalog "__catalog__" does not exist!` — this happened once, when
+the placeholder was added to the dbt copy without updating the script.
 
 **A `synonyms`/expression discrepancy turned out to be a stale view, not a
 Databricks bug.** First deploy attempt showed `total_revenue`'s synonyms
@@ -231,14 +262,14 @@ created by the script (no pre-existing resources needed, unlike
 Databricks), tables created, Semantic View created, and queried for real —
 `enterprise` $950.75/3 orders/$316.92 avg, `smb` $40.00/1/$40.00, matching
 every other target exactly, `order_count`'s `COUNT(*)` included (Snowflake's
-native metric handling doesn't share dbt's `COUNT(*)` codegen bug).
+native metric handling has no equivalent of dbt's `COUNT(*)` problem, below).
 
 `customer_id` in `customers.fields`: not needed for this path. Tested
 directly — took the Databricks-shaped file (`customer_id` absent)
 unmodified, deployed it through this exact procedure, queried it
 successfully. `snowflake/ossie/orders_customers.yaml` and
 `databricks/ossie/orders_customers.yaml` are structurally identical as a
-result (only their explanatory comments differ).
+result (currently byte-identical).
 
 ### Path B — Snowsight Workspaces' native "Ossie" upload
 
@@ -271,21 +302,31 @@ DIMENSIONS dim)`. Confirmed with real numbers, matching everywhere else.
 Not used as this repo's actual deploy path (Path A gets metrics through
 cleanly, Path B doesn't), but worth knowing it exists.
 
-## apache-ossie-dbt's own converter has three real bugs, confirmed by running `mf query`
+## apache-ossie-dbt's own converter has four real bugs, confirmed by running `mf query`
 
-(Getting there at all needs a small detour first: `ossie-dbt ossie-to-msi
--i <any ossie yaml> -o out.json`, the package's own CLI, currently crashes
-on every input with `AttributeError: 'PydanticSemanticManifest' object has
-no attribute 'model_dump_json'` — a Pydantic v1/v2 mismatch in the CLI's
-own code, confirmed against all three of this repo's model files. Read as
-"broken right now," not a structural finding — plausibly a one-line fix
-whenever someone notices. `dbt/scripts/export_metric_view.py` works around
-it by calling `OssieToMSIConverter` directly and serializing with
-`.json(by_alias=True, exclude_none=True, indent=2)` instead of the CLI's
-`.model_dump_json(...)`.)
+(Getting there at all used to need a small detour: `ossie-dbt ossie-to-msi
+-i <any ossie yaml> -o out.json`, the package's own CLI, crashed on every
+input with `AttributeError: 'PydanticSemanticManifest' object has no
+attribute 'model_dump_json'` — a Pydantic v1/v2 mismatch in the CLI's own
+code. **Fixed upstream (#331); the CLI works at the current pin**, confirmed
+live. `dbt/scripts/export_metric_view.py` still calls `OssieToMSIConverter`
+directly, but now for a different reason: it has to substitute the source
+placeholder in memory first, which the CLI has no hook for. It serializes
+with `.json(by_alias=True, exclude_none=True, indent=2)` because the output
+is still a Pydantic v1 model — the same call the fixed CLI makes.)
 
-Once that's bypassed, three real bugs in the converter itself, confirmed
-by running `mf query` against the result:
+**Status of the bugs below at `a5bdbbc` / `metricflow` 0.213.0:**
+none were fixed upstream, checked by reading the converter source (the
+`agg_time_dimension` is hardcoded `None`, `_find_dataset_for_col` still
+falls back to the first dataset, no time-spine handling exists) and by
+running the export unpatched on the new versions: `defaults` still `None`,
+`time_spine_table_configurations` still `[]`, `order_count` still on
+`customers`, and `mf query` still fails without the patch. The patch script
+is still fully needed.
+
+Once that's bypassed, four real bugs in the converter itself (the fourth,
+`COUNT(*)`, is described at the end of this list), confirmed by running
+`mf query` against the result:
 
 1. **`agg_time_dimension` missing everywhere** — not in a semantic
    model's `defaults`, not per-measure. MetricFlow requires this for
@@ -323,22 +364,29 @@ specifically, which is why that file is no longer byte-identical to the
 Databricks copy: one real, opposite requirement on the same field, not a
 bug in either converter.
 
-`dbt/scripts/patch_manifest_for_mf_query.py` fixes all four directly on
-the compiled `dbt/target/semantic_manifest.json`, run after
-`export_metric_view.py` (which itself needs `dbt run` to have already
-built the real tables). Verified live: `mf query --metrics
-total_revenue,avg_order_value --group-by customer_id__customer_segment`
-returns real numbers — `enterprise` $950.75/$316.917 avg, `smb`
-$40.00/$40.00 — matching Databricks and Snowflake exactly.
+`dbt/scripts/patch_manifest_for_mf_query.py` fixes the first three, plus
+the `COUNT(*)` bug below, directly on the compiled
+`dbt/target/semantic_manifest.json` (the primary-entity bug is fixed in the
+source YAML, above), run after `export_metric_view.py`, which in turn must
+run after `dbt run` since `dbt run` regenerates that file. Verified live:
+`mf query --metrics total_revenue,avg_order_value,order_count --group-by
+customer_id__customer_segment` returns real numbers — `enterprise`
+$950.75/$316.917 avg/3 orders, `smb` $40.00/$40.00/1 — matching Databricks
+and Snowflake exactly.
 
-**Still does not fix `order_count` itself**, same as dbt-core's native
-loader: even correctly attributed, `COUNT(*)`-shaped metrics compile to
-`SUM(CASE WHEN * IS NOT NULL THEN 1 ELSE 0 END)`, which DuckDB rejects
-outright (`Binder Error: STAR expression is only allowed as the root
-element of an expression`) — confirmed by actually running `mf query
---metrics order_count` post-patch. A MetricFlow query-engine
-code-generation bug, identical regardless of which converter produced the
-manifest. Stick to `total_revenue`/`avg_order_value` for a working demo.
+4. **`COUNT(*)` emitted as `expr: '*'`.** This was originally written up
+   here as a MetricFlow code-generation bug that no converter could avoid;
+   that was wrong. MetricFlow renders a `count` metric as
+   `SUM(CASE WHEN <expr> IS NOT NULL THEN 1 ELSE 0 END)`, and the converter
+   passes `*` as `<expr>`, giving `CASE WHEN * IS NOT NULL` — invalid SQL.
+   DuckDB is just the engine that reported it (`Binder Error: STAR
+   expression is only allowed as the root element of an expression`); other
+   engines were not tried. Confirmed by changing that one metric's `expr`
+   to `'1'` in the manifest: `mf query --metrics order_count` then returns
+   `4`, correct for four orders (`1` is never null, so every row counts).
+   The patch script does exactly that for any `count` metric whose `expr`
+   is `*`. Not verified against dbt-core's own native loader, which is
+   separate code and was not re-tested for this.
 
 **The patch doesn't stick.** It edits a generated file
 (`target/semantic_manifest.json`), and *any* dbt command that recompiles,
