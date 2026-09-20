@@ -1,0 +1,314 @@
+{
+  "compatibilityLevel": 1606,
+  "model": {
+    "annotations": [
+      {
+        "name": "__PBI_TimeIntelligenceEnabled",
+        "value": "1"
+      },
+      {
+        "name": "PBI_QueryOrder",
+        "value": "[\"DirectLake - raw\"]"
+      },
+      {
+        "name": "PBI_ProTooling",
+        "value": "[\"DirectLakeOnOneLakeInWeb\",\"WebModelingEdit\"]"
+      }
+    ],
+    "culture": "en-US",
+    "dataAccessOptions": {
+      "legacyRedirects": true,
+      "returnErrorValuesAsNull": true
+    },
+    "defaultPowerBIDataSourceVersion": "powerBI_V3",
+    "expressions": [
+      {
+        "name": "DirectLake - raw",
+        "annotations": [
+          {
+            "name": "PBI_IncludeFutureArtifacts",
+            "value": "False"
+          }
+        ],
+        "expression": [
+          "let",
+          "    Source = AzureStorage.DataLake(\"https://onelake.dfs.fabric.microsoft.com/00000000-0000-0000-0000-000000000001/00000000-0000-0000-0000-000000000002\", [HierarchicalNavigation=true])",
+          "in",
+          "    Source"
+        ],
+        "kind": "m",
+        "lineageTag": "6dfda3aa-6a4e-41d9-9798-f645b7c86413"
+      }
+    ],
+    "relationships": [
+      {
+        "name": "0dd62a82-433f-2036-96a9-192e688d0431",
+        "fromColumn": "customer_id",
+        "fromTable": "orders",
+        "toColumn": "customer_id",
+        "toTable": "customers"
+      }
+    ],
+    "sourceQueryCulture": "en-US",
+    "tables": [
+      {
+        "name": "orders",
+        "changedProperties": [
+          {
+            "property": "Description"
+          }
+        ],
+        "columns": [
+          {
+            "name": "order_id",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "Automatic"
+              }
+            ],
+            "changedProperties": [
+              {
+                "property": "Description"
+              }
+            ],
+            "dataType": "int64",
+            "description": "Unique order ID",
+            "formatString": "0",
+            "lineageTag": "cd2afa87-9960-438b-a0a7-42df64559101",
+            "sourceColumn": "order_id",
+            "sourceLineageTag": "order_id",
+            "summarizeBy": "sum"
+          },
+          {
+            "name": "customer_id",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "Automatic"
+              }
+            ],
+            "changedProperties": [
+              {
+                "property": "Description"
+              }
+            ],
+            "dataType": "int64",
+            "description": "Unique order ID",
+            "formatString": "0",
+            "lineageTag": "02647901-012a-497a-9f0c-7f880b0e63c1",
+            "sourceColumn": "customer_id",
+            "sourceLineageTag": "customer_id",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "order_date",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "Automatic"
+              }
+            ],
+            "changedProperties": [
+              {
+                "property": "Description"
+              }
+            ],
+            "dataType": "dateTime",
+            "description": "Date the order was placed",
+            "formatString": "General Date",
+            "lineageTag": "3e4713a3-f8d9-4142-a04d-262720609d64",
+            "sourceColumn": "order_date",
+            "sourceLineageTag": "order_date",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "order_amount",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "Automatic"
+              },
+              {
+                "name": "PBI_FormatHint",
+                "value": "{\"currencyCulture\":\"en-US\"}"
+              }
+            ],
+            "changedProperties": [
+              {
+                "property": "Description"
+              }
+            ],
+            "dataType": "decimal",
+            "description": "Amount of the order",
+            "formatString": "\\$#,0.###############;(\\$#,0.###############);\\$#,0.###############",
+            "lineageTag": "abbc4ea3-a0de-4a76-8cac-c4e2ac9cd9a1",
+            "sourceColumn": "order_amount",
+            "sourceLineageTag": "order_amount",
+            "summarizeBy": "sum"
+          }
+        ],
+        "description": "One row per order, references customers via customer_id",
+        "lineageTag": "67ff4c82-b27b-4c5c-b759-dad2101f02dc",
+        "partitions": [
+          {
+            "name": "orders",
+            "mode": "directLake",
+            "source": {
+              "entityName": "orders",
+              "expressionSource": "DirectLake - raw",
+              "schemaName": "dbo",
+              "type": "entity"
+            }
+          }
+        ],
+        "sourceLineageTag": "[dbo].[orders]"
+      },
+      {
+        "name": "customers",
+        "changedProperties": [
+          {
+            "property": "Description"
+          }
+        ],
+        "columns": [
+          {
+            "name": "customer_id",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "Automatic"
+              }
+            ],
+            "changedProperties": [
+              {
+                "property": "Description"
+              }
+            ],
+            "dataType": "int64",
+            "description": "Unique customer ID",
+            "formatString": "0",
+            "lineageTag": "789283f8-df1c-4824-b637-d392468e82db",
+            "sourceColumn": "customer_id",
+            "sourceLineageTag": "customer_id",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "customer_name",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "Automatic"
+              }
+            ],
+            "changedProperties": [
+              {
+                "property": "Description"
+              }
+            ],
+            "dataType": "string",
+            "description": "Display name of the customer",
+            "lineageTag": "ace8b3f0-18b5-4617-a93a-669af8bce1ea",
+            "sourceColumn": "customer_name",
+            "sourceLineageTag": "customer_name",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "customer_segment",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "Automatic"
+              }
+            ],
+            "changedProperties": [
+              {
+                "property": "Description"
+              }
+            ],
+            "dataType": "string",
+            "description": "Splits customers into Enterprise and SMB. Commissions and the board deck are based on it.",
+            "lineageTag": "0eca660e-da69-495d-92d1-d32f269d01c8",
+            "sourceColumn": "customer_segment",
+            "sourceLineageTag": "customer_segment",
+            "summarizeBy": "none"
+          }
+        ],
+        "description": "One row per customer",
+        "lineageTag": "27661c07-8066-40f6-a817-e76592df342e",
+        "measures": [
+          {
+            "name": "Total Revenue",
+            "annotations": [
+              {
+                "name": "PBI_FormatHint",
+                "value": "{\"currencyCulture\":\"en-US\"}"
+              }
+            ],
+            "changedProperties": [
+              {
+                "property": "Name"
+              },
+              {
+                "property": "Description"
+              }
+            ],
+            "description": "Total revenue across all orders",
+            "expression": "SUM(orders[order_amount])",
+            "formatString": "\\$#,0.###############;(\\$#,0.###############);\\$#,0.###############",
+            "lineageTag": "fccb9870-589a-46ac-b348-a3f5d09f38ab"
+          },
+          {
+            "name": "Order Count",
+            "changedProperties": [
+              {
+                "property": "Name"
+              },
+              {
+                "property": "Description"
+              }
+            ],
+            "description": "Number of orders",
+            "expression": "COUNTROWS(orders)",
+            "formatString": "0",
+            "lineageTag": "e0c12900-8b39-4586-aa2d-3576a1d66a3f"
+          },
+          {
+            "name": "Avg Order Value",
+            "annotations": [
+              {
+                "name": "PBI_FormatHint",
+                "value": "{\"currencyCulture\":\"en-US\"}"
+              }
+            ],
+            "changedProperties": [
+              {
+                "property": "Name"
+              },
+              {
+                "property": "Description"
+              }
+            ],
+            "description": "Average order value. This is the number the CEO checks every Monday.",
+            "expression": "AVERAGE(orders[order_amount])",
+            "formatString": "\\$#,0.###############;(\\$#,0.###############);\\$#,0.###############",
+            "lineageTag": "1c8cb6e2-2440-4d01-afa7-ff6c8db48190"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "customers",
+            "mode": "directLake",
+            "source": {
+              "entityName": "customers",
+              "expressionSource": "DirectLake - raw",
+              "schemaName": "dbo",
+              "type": "entity"
+            }
+          }
+        ],
+        "sourceLineageTag": "[dbo].[customers]"
+      }
+    ]
+  }
+}

@@ -19,19 +19,21 @@ packages = ["src/common"]
 
 [tool.uv.sources]
 # Pinned to a commit after upstream's internal OSI -> Ossie rename
-# (OSIDocument -> OssieDocument, osi_to_msi.py -> ossie_to_msi.py, etc).
-# Three packages were renamed as part of the same rename and need updating
-# here too: apache-ossie-gsf -> apache-ossie-nvidia-gsf (converters/gsf ->
-# converters/nvidia), honeydew-osi -> honeydew-ossie, osi-omni -> ossie-omni.
-apache-ossie = { git = "https://github.com/apache/ossie", subdirectory = "python", rev = "b5da5d66f0da4a0cd3388d52201dbf5523221a77" }
-apache-ossie-dbt = { git = "https://github.com/apache/ossie", subdirectory = "converters/dbt", rev = "b5da5d66f0da4a0cd3388d52201dbf5523221a77" }
-apache-ossie-databricks = { git = "https://github.com/apache/ossie", subdirectory = "converters/databricks", rev = "b5da5d66f0da4a0cd3388d52201dbf5523221a77" }
-apache-ossie-nvidia-gsf = { git = "https://github.com/apache/ossie", subdirectory = "converters/nvidia", rev = "b5da5d66f0da4a0cd3388d52201dbf5523221a77" }
-apache-ossie-snowflake = { git = "https://github.com/apache/ossie", subdirectory = "converters/snowflake", rev = "b5da5d66f0da4a0cd3388d52201dbf5523221a77" }
-ossie-omni = { git = "https://github.com/apache/ossie", subdirectory = "converters/omni", rev = "b5da5d66f0da4a0cd3388d52201dbf5523221a77" }
-apache-ossie-gooddata = { git = "https://github.com/apache/ossie", subdirectory = "converters/gooddata", rev = "b5da5d66f0da4a0cd3388d52201dbf5523221a77" }
-honeydew-ossie = { git = "https://github.com/apache/ossie", subdirectory = "converters/honeydew", rev = "b5da5d66f0da4a0cd3388d52201dbf5523221a77" }
-apache-ossie-wisdom = { git = "https://github.com/apache/ossie", subdirectory = "converters/wisdom", rev = "b5da5d66f0da4a0cd3388d52201dbf5523221a77" }
+# (OSIDocument -> OssieDocument, osi_to_msi.py -> ossie_to_msi.py, etc) and
+# after its move to flat semantic model documents (no `semantic_model:` list).
+# Packages renamed along the way: apache-ossie-gsf -> apache-ossie-nvidia-gsf
+# (converters/gsf -> converters/nvidia), honeydew-osi -> honeydew-ossie ->
+# apache-ossie-honeydew, osi-omni -> ossie-omni.
+apache-ossie = { git = "https://github.com/apache/ossie", subdirectory = "python", rev = "a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
+apache-ossie-dbt = { git = "https://github.com/apache/ossie", subdirectory = "converters/dbt", rev = "a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
+apache-ossie-databricks = { git = "https://github.com/apache/ossie", subdirectory = "converters/databricks", rev = "a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
+apache-ossie-nvidia-gsf = { git = "https://github.com/apache/ossie", subdirectory = "converters/nvidia", rev = "a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
+apache-ossie-snowflake = { git = "https://github.com/apache/ossie", subdirectory = "converters/snowflake", rev = "a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
+ossie-omni = { git = "https://github.com/apache/ossie", subdirectory = "converters/omni", rev = "a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
+apache-ossie-gooddata = { git = "https://github.com/apache/ossie", subdirectory = "converters/gooddata", rev = "a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
+apache-ossie-honeydew = { git = "https://github.com/apache/ossie", subdirectory = "converters/honeydew", rev = "a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
+apache-ossie-wisdom = { git = "https://github.com/apache/ossie", subdirectory = "converters/wisdom", rev = "a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
+apache-ossie-microsoft = { git = "https://github.com/apache/ossie", subdirectory = "converters/microsoft", rev = "a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
 
 [dependency-groups]
 dev = [
@@ -40,10 +42,11 @@ dev = [
     "apache-ossie-snowflake",
     "apache-ossie-wisdom",
     "apache-ossie-dbt",
+    "apache-ossie-microsoft[tom]",
     "databricks-sdk>=0.133.0",
-    "dbt-core>=1.12.3",
+    "dbt-core>=1.12.5",
     "dbt-duckdb>=1.11.0",
-    "dbt-metricflow>=0.14.0",
-    "honeydew-ossie",
+    "dbt-metricflow>=0.15.0",
+    "apache-ossie-honeydew",
     "ossie-omni",
 ]

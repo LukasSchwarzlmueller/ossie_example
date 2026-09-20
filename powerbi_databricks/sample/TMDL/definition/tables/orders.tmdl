@@ -1,0 +1,68 @@
+/// One row per order, references customers via customer_id
+table orders
+	lineageTag: 67ff4c82-b27b-4c5c-b759-dad2101f02dc
+	sourceLineageTag: [dbo].[orders]
+
+	/// Unique order ID
+	column order_id
+		dataType: int64
+		formatString: 0
+		lineageTag: cd2afa87-9960-438b-a0a7-42df64559101
+		sourceLineageTag: order_id
+		summarizeBy: sum
+		sourceColumn: order_id
+
+		changedProperty = Description
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Unique order ID
+	column customer_id
+		dataType: int64
+		formatString: 0
+		lineageTag: 02647901-012a-497a-9f0c-7f880b0e63c1
+		sourceLineageTag: customer_id
+		summarizeBy: none
+		sourceColumn: customer_id
+
+		changedProperty = Description
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Date the order was placed
+	column order_date
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: 3e4713a3-f8d9-4142-a04d-262720609d64
+		sourceLineageTag: order_date
+		summarizeBy: none
+		sourceColumn: order_date
+
+		changedProperty = Description
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Amount of the order
+	column order_amount
+		dataType: decimal
+		formatString: \$#,0.###############;(\$#,0.###############);\$#,0.###############
+		lineageTag: abbc4ea3-a0de-4a76-8cac-c4e2ac9cd9a1
+		sourceLineageTag: order_amount
+		summarizeBy: sum
+		sourceColumn: order_amount
+
+		changedProperty = Description
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"currencyCulture":"en-US"}
+
+	partition orders = entity
+		mode: directLake
+		source
+			entityName: orders
+			schemaName: dbo
+			expressionSource: 'DirectLake - raw'
+
+	changedProperty = Description
+

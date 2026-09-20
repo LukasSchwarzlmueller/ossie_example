@@ -1,9 +1,8 @@
 """Patch target/semantic_manifest.json so `mf query` can actually run.
 
-Works around 3 apache-ossie-dbt converter bugs: missing agg_time_dimension,
-order_count misattributed to the wrong semantic model, and an empty time
-spine - see NOTES.md for each. Does not fix order_count's own DuckDB
-codegen bug - stick to total_revenue/avg_order_value.
+Works around 4 apache-ossie-dbt converter bugs: missing agg_time_dimension,
+order_count misattributed to the wrong semantic model, an empty time spine,
+and COUNT(*) emitted as `expr: '*'` - see NOTES.md for each.
 
 Re-run after every export_metric_view.py or dbt run - both regenerate the
 file this patches from scratch.
@@ -40,6 +39,14 @@ def main() -> None:
                 "grain": "day",
             }
         ]
+
+    # Fix 4: COUNT(*) comes out as expr '*', which MetricFlow wraps as
+    # SUM(CASE WHEN * IS NOT NULL ...) - invalid SQL. '1' is never null, so it
+    # counts every row.
+    for metric in manifest["metrics"]:
+        params = metric["type_params"]
+        if params.get("expr") == "*" and params["metric_aggregation_params"]["agg"] == "count":
+            params["expr"] = "1"
 
     MANIFEST_PATH.write_text(json.dumps(manifest))
     print(f"patched {MANIFEST_PATH.relative_to(MANIFEST_PATH.parent.parent)}")

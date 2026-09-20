@@ -1,6 +1,8 @@
 """Convert dbt/ossie/orders_customers.yaml via apache-ossie-dbt, overwriting
 target/semantic_manifest.json - not dbt-core's own native OSI loader, which
-rejects this file's version outright. See NOTES.md.
+rejects this file's version outright. Replaces the model's
+`__catalog__.__schema__` source placeholder with the local DuckDB
+database/schema before conversion. See NOTES.md.
 """
 
 import json
@@ -13,11 +15,13 @@ from ossie_dbt.ossie_to_msi import OssieToMSIConverter
 REPO_ROOT = Path(__file__).parent.parent.parent
 INPUT_PATH = REPO_ROOT / "dbt" / "ossie" / "orders_customers.yaml"
 OUTPUT_PATH = REPO_ROOT / "dbt" / "target" / "semantic_manifest.json"  # `mf query` reads dbt's compiled manifest from here
+PLACEHOLDER = "__catalog__.__schema__"
+QUALIFIER = "ossie_demo.main"  # DuckDB file stem from profiles.yml's `path` + its `schema`
 
 
 def main() -> None:
     print(f"Step 1: load {INPUT_PATH.relative_to(REPO_ROOT)}")
-    raw = yaml.safe_load(INPUT_PATH.read_text())
+    raw = yaml.safe_load(INPUT_PATH.read_text().replace(PLACEHOLDER, QUALIFIER))
 
     print("Step 2: validate as an OssieDocument")
     document = OssieDocument.model_validate(raw)
