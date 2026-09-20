@@ -15,3 +15,5 @@ microsoft/model.tmdl
 microsoft/model/
 microsoft/*.SemanticModel/
 .tom/
+results/
+powerbi_databricks/metric_view_from_*.yaml

@@ -1,0 +1,82 @@
+/// One row per customer
+table customers
+	lineageTag: 27661c07-8066-40f6-a817-e76592df342e
+	sourceLineageTag: [dbo].[customers]
+
+	/// Total revenue across all orders
+	measure 'Total Revenue' = SUM(orders[order_amount])
+		formatString: \$#,0.###############;(\$#,0.###############);\$#,0.###############
+		lineageTag: fccb9870-589a-46ac-b348-a3f5d09f38ab
+
+		changedProperty = Name
+
+		changedProperty = Description
+
+		annotation PBI_FormatHint = {"currencyCulture":"en-US"}
+
+	/// Number of orders
+	measure 'Order Count' = COUNTROWS(orders)
+		formatString: 0
+		lineageTag: e0c12900-8b39-4586-aa2d-3576a1d66a3f
+
+		changedProperty = Name
+
+		changedProperty = Description
+
+	/// Average order value. This is the number the CEO checks every Monday.
+	measure 'Avg Order Value' = AVERAGE(orders[order_amount])
+		formatString: \$#,0.###############;(\$#,0.###############);\$#,0.###############
+		lineageTag: 1c8cb6e2-2440-4d01-afa7-ff6c8db48190
+
+		changedProperty = Name
+
+		changedProperty = Description
+
+		annotation PBI_FormatHint = {"currencyCulture":"en-US"}
+
+	/// Unique customer ID
+	column customer_id
+		dataType: int64
+		formatString: 0
+		lineageTag: 789283f8-df1c-4824-b637-d392468e82db
+		sourceLineageTag: customer_id
+		summarizeBy: none
+		sourceColumn: customer_id
+
+		changedProperty = Description
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Display name of the customer
+	column customer_name
+		dataType: string
+		lineageTag: ace8b3f0-18b5-4617-a93a-669af8bce1ea
+		sourceLineageTag: customer_name
+		summarizeBy: none
+		sourceColumn: customer_name
+
+		changedProperty = Description
+
+		annotation SummarizationSetBy = Automatic
+
+	/// Splits customers into Enterprise and SMB. Commissions and the board deck are based on it.
+	column customer_segment
+		dataType: string
+		lineageTag: 0eca660e-da69-495d-92d1-d32f269d01c8
+		sourceLineageTag: customer_segment
+		summarizeBy: none
+		sourceColumn: customer_segment
+
+		changedProperty = Description
+
+		annotation SummarizationSetBy = Automatic
+
+	partition customers = entity
+		mode: directLake
+		source
+			entityName: customers
+			schemaName: dbo
+			expressionSource: 'DirectLake - raw'
+
+	changedProperty = Description
+
