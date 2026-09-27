@@ -54,6 +54,7 @@ datasets:
       - dialect: ANSI_SQL
         expression: order_date
     label: Order Date
+    description: The date the order was placed.
     datatype: Date
     dimension:
       is_time: true
