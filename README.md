@@ -1,19 +1,28 @@
-# Apache Ossie -> dbt, Databricks & Snowflake
+# Apache Ossie -> dbt, Databricks, Snowflake & Microsoft Fabric
 
 Converts one [Apache Ossie](https://ossie.apache.org/) semantic model into
-three targets: a dbt Core project, a Databricks Unity Catalog Metric View,
-and a Snowflake Cortex Analyst semantic model. Same source model
-everywhere (`customers` + `orders`, 1:n on `customer_id`; metrics
-`total_revenue`, `order_count`, `avg_order_value`) - see `NOTES.md` for how
-and why the three copies of that model differ, and for the full story
-behind every fix mentioned below.
+four targets: a dbt Core project, a Databricks Unity Catalog Metric View,
+a Snowflake Cortex Analyst semantic model and a Power BI / Microsoft Fabric
+semantic model (Direct Lake). Same source model everywhere (`customers` +
+`orders`, 1:n on `customer_id`; metrics `total_revenue`, `order_count`,
+`avg_order_value`) - see `NOTES.md` for how and why the four copies of that
+model differ, and for the full story behind every fix mentioned below.
+
+It also goes the other way once: an existing Power BI semantic model,
+exported from Fabric, converted through Ossie into a Databricks Metric View
+([Power BI -> Databricks](#power-bi---databricks)).
 
 ## Prerequisites
 
 - [`uv`](https://docs.astral.sh/uv/) - manages the Python version and all
   dependencies.
-- For Databricks/Snowflake: real workspace/account access. Not needed for
-  dbt, which runs entirely locally against DuckDB.
+- For Databricks/Snowflake/Fabric: real workspace/account access. Not
+  needed for dbt, which runs entirely locally against DuckDB.
+- For anything TMDL (Microsoft `--tmdl`/`--tmdl-folder`, Power BI ->
+  Databricks `--from tmdl`): a .NET runtime and Microsoft's TOM assemblies
+  in `.tom/assemblies`, restored with `converters/microsoft/scripts/restore_tom.py`
+  from the [apache/ossie](https://github.com/apache/ossie) repo. The TMSL
+  (`model.bim`) paths need neither.
 
 ```bash
 uv sync
@@ -122,11 +131,71 @@ SELECT * FROM SEMANTIC_VIEW(
 )
 ```
 
+## Microsoft Fabric / Power BI
+
+```bash
+uv run microsoft/export_semantic_model.py                 # model.bim (TMSL)
+uv run microsoft/export_semantic_model.py --tmdl          # model.tmdl, single file (needs TOM)
+uv run microsoft/export_semantic_model.py --tmdl-folder   # model/, split per table (needs TOM)
+```
+
+Run from the repo root (TOM looks for `.tom/assemblies` relative to the
+current directory, or `OSSIE_MICROSOFT_TOM_ASSEMBLIES`). Add `--warnings`
+to see what's dropped: display `label`s and measure `datatype`s, neither of
+which Power BI has a place for.
+
+The result is a Direct Lake model: both tables read `<FABRIC_SCHEMA>.customers`
+/ `.orders` from a Lakehouse, all three metrics become DAX measures on
+`orders`, and the `orders -> customers` relationship carries over.
+
+| `.env` variable | Required | Notes |
+|---|---|---|
+| `FABRIC_WORKSPACE_ID` / `FABRIC_LAKEHOUSE_ID` | no | from the Lakehouse URL `app.powerbi.com/groups/<workspace>/lakehouses/<lakehouse>`; unset gives placeholder OneLake ids |
+| `FABRIC_LAKEHOUSE` | no | defaults to `ossie`; replaces the `__catalog__` part of the placeholder |
+| `FABRIC_SCHEMA` | no | defaults to `dbo`; must match the schema the tables live under |
+
+Two ways into a workspace:
+
+- **Notebook upload** - upload `microsoft/model.bim` to the Lakehouse's
+  **Files**, attach `microsoft/upload_bim_to_fabric.ipynb` to that
+  Lakehouse and run it. It creates the semantic model via
+  `semantic-link-labs`, or updates it if it already exists.
+- **Git integration** - `export_semantic_model.py --tmdl-folder`, then
+  `uv run microsoft/package_for_fabric.py` wraps `microsoft/model/` into a
+  `<name>.SemanticModel/` item folder (adds `.platform` and
+  `definition.pbism`) for a Fabric git-synced workspace. Pass
+  `--logical-id <id>` on later runs to update the same item instead of
+  creating a new one.
+
+The Microsoft copy of the Ossie model differs from the others in three
+ways: it keeps `customers.customer_id` (Power BI needs both ends of a
+relationship as columns), adds `DAX` dialects next to the SQL ones, and
+tags each metric with a `POWER_BI` custom extension naming the table the
+measure lives on. See NOTES.md.
+
+## Power BI -> Databricks
+
+The reverse direction: a Power BI model exported from Fabric (in
+`powerbi_databricks/sample/`, both as TMSL and as TMDL) converted through
+Ossie into a Databricks Metric View.
+
+```bash
+uv run powerbi_databricks/export_metric_view.py --from tmsl   # or --from tmdl (needs TOM); default: both
+uv run powerbi_databricks/deploy_to_databricks.py --dry-run   # same .env as databricks/
+```
+
+Dimensions and the join come through; **the measures don't** - Power BI
+measures are DAX only, and nothing translates DAX to SQL, so all three are
+dropped with a warning. Details in
+[powerbi_databricks/README.md](powerbi_databricks/README.md).
+
 ## Layout
 
-- `dbt/ossie/`, `databricks/ossie/`, `snowflake/ossie/` - the Ossie model, one copy per target (near-identical - see NOTES.md for the handful of fields that differ and why).
+- `dbt/ossie/`, `databricks/ossie/`, `snowflake/ossie/`, `microsoft/ossie/` - the Ossie model, one copy per target (near-identical - see NOTES.md for the handful of fields that differ and why).
 - `<target>/export_*.py` - offline conversion, writes the target-native file.
 - `<target>/deploy_to_*.py` / `dbt run` + `mf query` - deploys/queries against the real thing.
+- `microsoft/package_for_fabric.py`, `microsoft/upload_bim_to_fabric.ipynb` - the two ways to get the exported model into a Fabric workspace.
+- `powerbi_databricks/` - the reverse path, Power BI semantic model -> Databricks Metric View, with its own README.
 - `roundtrip_databricks/run_roundtrip.py` - not part of the talk; a side check that the Databricks export/import pair is lossless.
 - `common/env.py` - shared `.env` loading, used by every export/deploy script.
 

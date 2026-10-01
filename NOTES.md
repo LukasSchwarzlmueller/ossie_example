@@ -395,9 +395,115 @@ scratch, silently reverting the patch. Re-run
 `patch_manifest_for_mf_query.py` immediately before every `mf query`/
 `mf list` call.
 
+## Microsoft Fabric / Power BI: measures carry over, labels and datatypes don't
+
+`apache-ossie-microsoft` (same `a5bdbbc` pin as every other converter,
+installed with its `tom` extra) turns `microsoft/ossie/orders_customers.yaml`
+into a TMSL `model.bim`; `microsoft/export_semantic_model.py` wraps it.
+The result is a Direct Lake model: one `DatabaseQuery` expression pointing
+at a OneLake Lakehouse, one `directLake` partition per table (`entityName`
+plus `schemaName` from `FABRIC_SCHEMA`), the `orders -> customers`
+relationship, and all three metrics as DAX measures on `orders`.
+
+**How the Microsoft copy differs from the others.** Three additions, all
+for this converter:
+
+1. `customers.customer_id` is present, like the dbt copy and unlike the
+   Databricks one: a Power BI relationship needs a real column on both
+   ends.
+2. `DAX` dialects next to the SQL ones (`SUM(orders[order_amount])`,
+   `COUNTROWS(orders)`, `UPPER(customers[customer_name])`). The converter
+   prefers a `DAX` dialect when one exists. `avg_order_value` deliberately
+   has none: the converter translates its `AVG(order_amount)` itself, to
+   `AVERAGE('orders'[order_amount])`, which shows that simple SQL
+   aggregates work without a hand-written DAX version.
+3. A `POWER_BI` custom extension on each metric, `{"table": "orders"}`.
+   Ossie metrics are model-level, Power BI measures belong to a table, and
+   this extension tells the converter which one.
+
+**What `--warnings` reports as dropped:** each field's display `label` (a
+Power BI column has nowhere to store it) and each metric's `datatype`
+(Power BI infers a measure's type from its DAX). `ai_context` survives as
+an `OssieAIContext` annotation on the column. Each warning is printed
+twice, once as a Python warning and once through the `ossie_microsoft`
+logger. `powerbi_databricks/export_metric_view.py` suppresses the second
+copy with a `NullHandler`, while this script doesn't yet.
+
+**`customer_name` becomes a calculated column, and Fabric accepts it.**
+The `DAX` dialect makes the converter emit `customer_name` as
+`type: calculated` with `expression: UPPER(customers[customer_name])` and
+no `sourceColumn`. On paper that looks like the column refers to itself.
+In practice Fabric accepts it: the model was uploaded to a real Fabric
+workspace and works there, calculated column included.
+
+**Source qualification**, same pattern as Databricks/Snowflake: the
+`__catalog__.__schema__` placeholder becomes `FABRIC_LAKEHOUSE.FABRIC_SCHEMA`
+(default `ossie.dbo`). The OneLake URL in the `DatabaseQuery` expression
+needs the workspace and Lakehouse *ids*, not names. They come from
+`FABRIC_WORKSPACE_ID`/`FABRIC_LAKEHOUSE_ID`, and when those are unset the
+converter writes zero-GUID placeholders. A `model.bim` exported with real
+ids identifies your tenant's workspace, so it is in `.gitignore`.
+
+**TMDL needs Microsoft's TOM.** `ossie_microsoft.tom.serialize_tmdl` only
+writes the single-file TMDL form (`--tmdl`). Fabric's git integration wants
+the split-per-table folder, which only TOM's
+`TmdlSerializer.SerializeDatabaseToFolder` writes, so `--tmdl-folder` calls
+it directly through two *private* helpers (`_load_tom`,
+`_assembly_directory`). They aren't public API, so check them after every
+pin bump. TOM is .NET, loaded via pythonnet, and needs its assemblies
+restored first (`converters/microsoft/scripts/restore_tom.py` upstream).
+Without them, TMDL fails with `TomUnavailableError`.
+
+**Getting it into Fabric.** TOM's folder output is only the `definition/`
+part of a Fabric item. `microsoft/package_for_fabric.py` adds the
+`.platform` (logicalId, displayName) and `definition.pbism` wrapper a
+`<name>.SemanticModel/` git item needs. It generates a new logicalId on
+every run unless you pass `--logical-id`, and a new id makes Fabric create
+a second item instead of updating the first. The simpler route is
+`microsoft/upload_bim_to_fabric.ipynb`, run inside Fabric:
+`semantic-link-labs`' `create_semantic_model_from_bim`, falling back to
+`update_semantic_model_from_bim` if the model already exists.
+
+## Power BI -> Databricks: dimensions and joins survive, DAX measures don't
+
+The reverse direction, starting from a real Power BI model rather than an
+Ossie file: `powerbi_databricks/sample/` is a Direct Lake semantic model
+exported from Fabric twice, as TMSL (`model.bim`) and as a TMDL folder.
+`powerbi_databricks/export_metric_view.py` runs it through
+`ossie_microsoft` (Power BI -> Ossie) and `ossie_databricks` (Ossie ->
+Metric View). The full write-up is in `powerbi_databricks/README.md`. The
+key findings:
+
+- **Measures are lost.** Power BI measures exist only as DAX, and
+  `ossie-databricks` takes only `DATABRICKS`/`ANSI_SQL` dialects. Neither
+  converter translates DAX to SQL (`ossie_microsoft` does only SQL -> DAX,
+  for simple aggregates, see above), so `Total Revenue`, `Order Count` and
+  `Avg Order Value` are all dropped (`no DATABRICKS/ANSI_SQL dialect;
+  dropping metric`). The export still exits 0. Databricks accepts a Metric
+  View with no measures, and dimension queries work (verified 2026-09-20).
+- **Two fix-ups before `ossie-databricks` accepts it** (`fix_up()`): the
+  Power BI source `dbo.orders` is 2-part and Metric Views need 3-part
+  names, and `customer_id` exists in both tables while Metric View
+  dimension names are global. That is the same conflict as in the
+  Databricks section above, solved the same way, by dropping the
+  `customers` copy.
+- **TMDL has no direct path.** `ossie-microsoft` reads a `.bim` or a single
+  TMDL document, not a folder, and its single-document TMDL parser fails
+  when the database has no name, which is the case in this Fabric export
+  (`tom.py` only matches `database <name>`). `read_tmdl()` loads the folder
+  with TOM instead, serializes it to TMSL, and passes that to the same
+  converter. Both formats produce the same Metric View.
+- **The sample was sanitized.** The OneLake workspace/Lakehouse ids in
+  `sample/` are zero-GUID placeholders. The Ossie output keeps the whole
+  `DirectLake - raw` M expression in `custom_extensions`, so an unsanitized
+  export would publish them.
+- Small sample-data quirk, not a converter issue: `orders.customer_id`'s
+  description in the export is `Unique order ID` (copied from `order_id`),
+  and it carries through as the Metric View dimension's comment.
+
 ## Shared tooling: `common/` lives under `src/`, not the repo root
 
-All four export/deploy scripts share one `.env`-loading helper,
+All export/deploy scripts share one `.env`-loading helper,
 `common/env.py` (`load_env_file`, `REPO_ROOT`), importable as plain
 `from common.env import ...` — no per-script `sys.path.insert` needed. That
 requires `common` to be packaged and editable-installed via

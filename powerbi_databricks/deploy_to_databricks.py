@@ -7,7 +7,7 @@ powerbi_databricks/metric_view_from_<way>.yaml. Run export_metric_view.py first.
     uv run powerbi_databricks/deploy_to_databricks.py [--dry-run]    # --dry-run prints the SQL
 
 Needs the same .env as databricks/deploy_to_databricks.py. The Metric Views have no measures
-(DAX-only metrics are dropped), which Databricks may reject - not tested.
+(DAX-only metrics are dropped); Databricks accepts that - see README.md.
 """
 
 import argparse
