@@ -1,0 +1,121 @@
+# Same sales_demo model as the other targets, with three changes the DuckDB
+# extension requires - see README.md:
+#   1. wrapped in a `semantic_model:` array (the extension rejects the flat form)
+#   2. metric columns qualified as dataset.field (SUM(orders.order_amount), not
+#      SUM(order_amount)) so the engine knows which table to aggregate over
+#   3. ANSI_SQL only, and `customer_name` left as a plain column reference
+version: 0.2.0.dev0
+semantic_model:
+- name: sales_demo
+  description: Minimal orders/customers demo model for the OSI meetup talk
+  datasets:
+  - name: customers
+    source: main.customers
+    primary_key:
+    - customer_id
+    description: One row per customer
+    fields:
+    - name: customer_id
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: customer_id
+      datatype: Integer
+    - name: customer_name
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: customer_name
+      label: Customer Name
+      datatype: String
+    - name: customer_segment
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: customer_segment
+      label: Customer Segment
+      datatype: String
+      dimension:
+        is_time: false
+      ai_context:
+        instructions: Splits customers into Enterprise and SMB. Sales commissions and the CEO's board deck are both based on this.
+  - name: orders
+    source: main.orders
+    primary_key:
+    - order_id
+    description: One row per order, references customers via customer_id
+    fields:
+    - name: order_id
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: order_id
+      datatype: Integer
+    - name: customer_id
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: customer_id
+      datatype: Integer
+    - name: order_date
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: order_date
+      label: Order Date
+      description: The date the order was placed.
+      datatype: Date
+      dimension:
+        is_time: true
+    - name: order_amount
+      expression:
+        dialects:
+        - dialect: ANSI_SQL
+          expression: order_amount
+      label: Order Amount
+      datatype: Decimal
+      ai_context:
+        synonyms:
+        - amount
+        - order total
+        - order value
+  relationships:
+  - name: orders_to_customers
+    from: orders
+    to: customers
+    from_columns:
+    - customer_id
+    to_columns:
+    - customer_id
+  metrics:
+  - name: total_revenue
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: SUM(orders.order_amount)
+    description: Total revenue across all orders
+    datatype: Decimal
+    ai_context:
+      synonyms:
+      - revenue
+      - sales
+  - name: order_count
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: COUNT(*)
+    description: Number of orders
+    datatype: Integer
+  - name: avg_order_value
+    expression:
+      dialects:
+      - dialect: ANSI_SQL
+        expression: AVG(orders.order_amount)
+    description: Average order value
+    datatype: Decimal
+    ai_context:
+      synonyms:
+      - AOV
+      - average order value
+      - average purchase value
+      instructions: This is the number the CEO checks every Monday.

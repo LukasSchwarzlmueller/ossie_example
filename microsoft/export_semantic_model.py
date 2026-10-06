@@ -18,6 +18,7 @@ Fabric item metadata, not part of the semantic model itself.
 
 import argparse
 import json
+import logging
 import os
 import shutil
 import warnings
@@ -26,6 +27,10 @@ from ossie_microsoft.ossie_to_semantic_model import convert_ossie_to_semantic_mo
 from ossie_microsoft.tom import _assembly_directory, _load_tom
 
 from common.env import REPO_ROOT, load_env_file
+
+# every ossie_microsoft warning is also logged; don't let the logging fallback print it
+# twice (and past the --warnings flag, which only controls the warnings channel)
+logging.getLogger("ossie_microsoft").addHandler(logging.NullHandler())
 
 INPUT = REPO_ROOT / "microsoft" / "ossie" / "orders_customers.yaml"
 PLACEHOLDER = "__catalog__.__schema__"
