@@ -56,10 +56,14 @@ def main() -> None:
     schema = os.environ.get("FABRIC_SCHEMA", "dbo")
     ossie_yaml = INPUT.read_text().replace(PLACEHOLDER, f"{lakehouse}.{schema}")
 
+    workspace_id = os.environ.get("FABRIC_WORKSPACE_ID")
+    lakehouse_id = os.environ.get("FABRIC_LAKEHOUSE_ID")
+    source = {"workspaceId": workspace_id, "itemId": lakehouse_id} if workspace_id and lakehouse_id else None
+
     with warnings.catch_warnings():
         if not args.warnings:
             warnings.simplefilter("ignore")
-        bim = convert_ossie_to_semantic_model(ossie_yaml)  # TMSL, always - the other formats build on it
+        bim = convert_ossie_to_semantic_model(ossie_yaml, source=source)  # TMSL, always - the other formats build on it
 
         if args.tmdl_folder:
             output = REPO_ROOT / "microsoft" / "model"
@@ -76,7 +80,8 @@ def main() -> None:
         else:
             output = REPO_ROOT / "microsoft" / "model.bim"
             output.write_text(json.dumps(bim, indent=2))
-    print(f"Wrote {output.relative_to(REPO_ROOT)} (qualified for {lakehouse}.{schema})")
+    source_note = "real OneLake ids" if source else "placeholder OneLake ids - set FABRIC_WORKSPACE_ID/FABRIC_LAKEHOUSE_ID"
+    print(f"Wrote {output.relative_to(REPO_ROOT)} (qualified for {lakehouse}.{schema}, {source_note})")
 
 
 if __name__ == "__main__":
