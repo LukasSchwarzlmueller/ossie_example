@@ -15,22 +15,12 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from common.databricks_converter import find_jar
 from common.env import REPO_ROOT, load_env_file
 
 INPUT = REPO_ROOT / "databricks" / "ossie" / "orders_customers.yaml"
 OUTPUT = REPO_ROOT / "databricks" / "metric_view.yaml"
-BUILD_DIR = REPO_ROOT / ".ossie" / "converters" / "databricks" / "java" / "target"
 PLACEHOLDER = "__catalog__.__schema__"
-
-
-def find_jar() -> Path:
-    if env_jar := os.environ.get("OSSIE_DATABRICKS_JAR"):
-        return Path(env_jar)
-    built = sorted(BUILD_DIR.glob("ossie-databricks-converter-*.jar"))
-    built = [j for j in built if not j.name.endswith(("-sources.jar", "-javadoc.jar"))]
-    if not built:
-        raise SystemExit("converter jar not found - run databricks/build_converter.sh (see README.md).")
-    return built[0]
 
 
 def main() -> None:
