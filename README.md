@@ -59,6 +59,22 @@ that gets silently overwritten.
 
 ## Databricks
 
+Upstream removed the Python Databricks converter, so this uses the Java one.
+Needs JDK 21+, Maven and git. Build it once at the pinned apache/ossie commit
+(into `.ossie/`, git-ignored); to update, change `OSSIE_REV` in the script:
+
+```bash
+sudo pacman -S jdk21-openjdk maven   # or your OS's equivalent
+databricks/build_converter.sh
+```
+
+Or call the jar directly (the `__catalog__.__schema__` placeholder must be
+replaced first): `java -jar <jar> export databricks/ossie/orders_customers.yaml -o databricks/metric_view.yaml`.
+Use your own build with `OSSIE_DATABRICKS_JAR` in `.env`.
+
+The old Python version is kept in `databricks_python_deprecated/`
+(pinned to a commit that still has it).
+
 ```bash
 uv run databricks/export_metric_view.py
 cat databricks/metric_view.yaml
@@ -80,6 +96,7 @@ uv run databricks/deploy_to_databricks.py
 
 | `.env` variable | Required | Notes |
 |---|---|---|
+| `OSSIE_DATABRICKS_JAR` | no | use this jar instead of the one `build_converter.sh` builds |
 | `DATABRICKS_HOST` | yes | your workspace URL |
 | `DATABRICKS_TOKEN` | yes | personal access token |
 | `DATABRICKS_WAREHOUSE_ID` | yes | SQL warehouse to run against |
