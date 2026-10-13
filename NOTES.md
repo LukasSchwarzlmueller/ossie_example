@@ -95,7 +95,7 @@ Converting the same model with `ossie-databricks export` reveals two
 requirements that flatly conflict with what dbt-core's own native OSI
 loader wants — not `apache-ossie-dbt`, the separate package this repo
 actually uses for dbt, which enforces neither of these (see the dbt
-sections above and in README.md):
+sections above and in dbt/README.md):
 
 1. **Version is gated the other way.** `ossie-databricks` only accepts
    `"0.2.0.dev0"`; dbt-core's native loader only accepts `0.1.0`/`0.1.1`.
@@ -115,7 +115,7 @@ Because of this, `dbt/ossie/orders_customers.yaml` in this repo is not
 reconciled with dbt-core's native loader at all — it's converted instead
 through `apache-ossie-dbt`'s separate converter package. Pointed at
 dbt-core's own native loader, this file silently yields zero metrics
-rather than erroring (see "Known issues (dbt)" in README.md) — it was
+rather than erroring (see dbt/README.md) — it was
 never meant to satisfy that loader's constraints.
 
 It's also *not* byte-identical to `databricks/ossie/orders_customers.yaml`
