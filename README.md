@@ -34,7 +34,7 @@ uv sync
 cd dbt
 uv run dbt run                                     # builds the tables
 uv run scripts/export_metric_view.py               # Ossie -> semantic_manifest.json
-uv run scripts/patch_manifest_for_mf_query.py       # works around 4 converter bugs, see NOTES.md
+uv run scripts/patch_manifest_for_mf_query.py       # adds agg_time_dimension + time spine, see NOTES.md
 uv run mf query --metrics total_revenue,avg_order_value,order_count --group-by customer_id__customer_segment
 cd ..
 ```
@@ -46,12 +46,23 @@ smb                                        40                40                 
 enterprise                                950.75            316.917              3
 ```
 
-`apache-ossie-dbt`'s converter has 4 real bugs, patched by the script
-above (see NOTES.md for how each was found):
-- no `agg_time_dimension` is ever set
-- `order_count` attaches to the wrong semantic model
-- no time spine is ever configured
-- `COUNT(*)` is emitted as `expr: '*'`, which compiles to invalid SQL
+`apache-ossie-dbt`'s converter has 1 open bug, patched by the script above
+(see NOTES.md for how it was found): no `agg_time_dimension` is ever set,
+even though `order_date` is marked `is_time: true`.
+
+The time spine is not the converter's job: Ossie has no notion of one. It is
+declared in `models/metricflow_time_spine.yml`, and the patch script copies
+it from dbt's own `target/manifest.json` into the converter's output. So
+`export_metric_view.py` writes exactly what the converter produced, and
+everything added on top is in the one patch script.
+
+Two more are fixed upstream (#432, #495) and no longer patched:
+`COUNT(*)` used to come out as `expr: '*'`, which compiles to invalid SQL,
+and `order_count` used to attach to the wrong semantic model. The second fix
+needs the dataset named in the model, so every copy of the model says
+`COUNT(orders.*)`; a bare `COUNT(*)` with more than one dataset is now
+dropped by the dbt converter with a `ROW_COUNT_METRIC_DROPPED` warning
+instead of guessed.
 
 Re-run the patch step before any further `mf` call after re-running
 `export_metric_view.py` or any `dbt` command - it edits a generated file
@@ -217,6 +228,9 @@ dropped with a warning. Details in
 - `common/env.py` - shared `.env` loading, used by every export/deploy script.
 
 ## Further reading
+
+Each target folder has a short README: how to run it, what was found, and
+which fixes it needed.
 
 `NOTES.md` has the full background: every bug found, how it was found, and
 why the model copies differ.

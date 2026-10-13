@@ -315,6 +315,58 @@ placeholder in memory first, which the CLI has no hook for. It serializes
 with `.json(by_alias=True, exclude_none=True, indent=2)` because the output
 is still a Pydantic v1 model — the same call the fixed CLI makes.)
 
+**Status at `7496811` (upstream `main` as of 2026-10-13):** bugs 2 and 4
+below are fixed upstream (#432, #495), bugs 1 and 3 are not. Checked by
+running the export unpatched: `order_count` now lands on `orders` with
+`expr: '1'`, while `defaults` is still `None`,
+`time_spine_table_configurations` is still `[]`, and `mf query` still fails
+with the time-spine error. The patch script now only carries fixes 1 and 3.
+Bug 2's fix is not automatic: the converter no longer guesses a dataset for
+a row count, so a bare `COUNT(*)` in a model with more than one dataset is
+dropped with `ROW_COUNT_METRIC_DROPPED`. Every copy of the model now says
+`COUNT(orders.*)`, so the copies stay aligned. With that change `mf query`
+returns the same numbers as before (`enterprise` 950.75 / 316.917 / 3,
+`smb` 40 / 40 / 1). What the other targets do with the qualified form:
+both Databricks converters (Java and the old Python one) still emit
+`COUNT(*)`, byte-identical to before; the Microsoft export uses the DAX
+dialect (`COUNTROWS(orders)`) and is byte-identical; the DuckDB script
+returns the same numbers. Snowflake is the exception: its converter passes
+the expression through verbatim, so `semantic_model.yaml` now says
+`COUNT(orders.*)`. That has not been deployed to Snowflake since the change,
+and Snowflake documents `COUNT(alias.*)` as skipping rows where any column
+is NULL, which a bare `COUNT(*)` does not.
+
+The same bump needed two other changes, and one cleanup. `apache-ossie-databricks` stays
+on `a5bdbbc`, because upstream removed the Python Databricks converter
+(#531) and three scripts here still import it; it only depends on `pyyaml`,
+so the split pin resolves. `ossie_snowflake.converter` became
+`ossie_snowflake.ossie_to_snowflake` (#566), fixed in
+`snowflake/export_semantic_model.py`. The nvidia, gooddata, wisdom, honeydew
+and omni converters were dropped from `pyproject.toml`: nothing in this repo
+imports them, and each had to be re-pinned (and twice renamed) on every bump. The Snowflake,
+Microsoft and Python Databricks exports were diffed against their pre-bump
+output and are byte-identical.
+
+**Bug 3 (time spine) turned out not to be a converter bug.** Ossie has no
+notion of a time spine, so the converter has nothing to convert. The real
+gaps were here: the dbt project never declared its spine (no `time_spine:`
+property on `metricflow_time_spine`, so dbt's own manifest had none either,
+confirmed with `dbt parse`), and `export_metric_view.py` overwrote the whole
+manifest, `project_configuration` included. Now
+`dbt/models/metricflow_time_spine.yml` declares it, and the patch script
+builds the `time_spines` entry from that model's node in dbt's own
+`target/manifest.json`, which the export never touches. The export still
+writes the converter's output unmodified, so the file shows what the
+converter really produces until the patch runs; the patch script keeps two
+fixes, `agg_time_dimension` and the time spine, but no longer hardcodes the
+spine's relation name. (Copying the spine inside the export was tried first
+and dropped: it hid the gap in the converter's output, and it read the file
+it was about to overwrite, which after the first run is its own output.) Verified with `mf query` grouped by segment and by
+`metric_time__month`; without the patch the only remaining failure is
+`Invalid aggregation time dimension configuration`.
+
+The rest of this section describes the bugs as found at `a5bdbbc`.
+
 **Status of the bugs below at `a5bdbbc` / `metricflow` 0.213.0:**
 none were fixed upstream, checked by reading the converter source (the
 `agg_time_dimension` is hardcoded `None`, `_find_dataset_for_col` still

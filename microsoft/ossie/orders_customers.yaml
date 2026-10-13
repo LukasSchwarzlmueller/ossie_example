@@ -106,7 +106,7 @@ metrics:
   expression:
     dialects:
     - dialect: ANSI_SQL
-      expression: COUNT(*)
+      expression: COUNT(orders.*)
     - dialect: DAX
       expression: "COUNTROWS(orders)"
   description: Number of orders

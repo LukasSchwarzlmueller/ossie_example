@@ -84,6 +84,10 @@ order_count + total_revenue  OK: SELECT count_star(), sum(orders.order_amount)
                                  FROM main.orders
 ```
 
+The model now writes it as `COUNT(orders.*)`, the form the dbt converter needs
+to place a row count, but the extension treats that exactly like `COUNT(*)`:
+same refusal alone, same `count_star()` alongside `total_revenue`.
+
 So `order_count` has no grain of its own and borrows one from whatever else is
 in the query. The same metric is answerable or not depending on what you ask
 for alongside it. (Microsoft's converter refuses the same expression for the

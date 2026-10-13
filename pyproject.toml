@@ -21,32 +21,23 @@ packages = ["src/common"]
 # Pinned to a commit after upstream's internal OSI -> Ossie rename
 # (OSIDocument -> OssieDocument, osi_to_msi.py -> ossie_to_msi.py, etc) and
 # after its move to flat semantic model documents (no `semantic_model:` list).
-# Packages renamed along the way: apache-ossie-gsf -> apache-ossie-nvidia-gsf
-# (converters/gsf -> converters/nvidia), honeydew-osi -> honeydew-ossie ->
-# apache-ossie-honeydew, osi-omni -> ossie-omni.
-apache-ossie = { git = "https://github.com/apache/ossie", subdirectory = "python", rev = "a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
-apache-ossie-dbt = { git = "https://github.com/apache/ossie", subdirectory = "converters/dbt", rev = "a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
+# apache-ossie-databricks stays on the older commit on purpose: upstream
+# removed the Python Databricks converter (#531) and the roundtrip_databricks,
+# powerbi_databricks and databricks_python_deprecated scripts still use it. It
+# only depends on pyyaml, so it does not conflict with the newer apache-ossie.
+apache-ossie = { git = "https://github.com/apache/ossie", subdirectory = "python", rev = "74968116780058f42d678cba3594e35390b5be12" }
+apache-ossie-dbt = { git = "https://github.com/apache/ossie", subdirectory = "converters/dbt", rev = "74968116780058f42d678cba3594e35390b5be12" }
 apache-ossie-databricks = { git = "https://github.com/apache/ossie", subdirectory = "converters/databricks", rev = "a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
-apache-ossie-nvidia-gsf = { git = "https://github.com/apache/ossie", subdirectory = "converters/nvidia", rev = "a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
-apache-ossie-snowflake = { git = "https://github.com/apache/ossie", subdirectory = "converters/snowflake", rev = "a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
-ossie-omni = { git = "https://github.com/apache/ossie", subdirectory = "converters/omni", rev = "a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
-apache-ossie-gooddata = { git = "https://github.com/apache/ossie", subdirectory = "converters/gooddata", rev = "a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
-apache-ossie-honeydew = { git = "https://github.com/apache/ossie", subdirectory = "converters/honeydew", rev = "a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
-apache-ossie-wisdom = { git = "https://github.com/apache/ossie", subdirectory = "converters/wisdom", rev = "a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
-apache-ossie-microsoft = { git = "https://github.com/apache/ossie", subdirectory = "converters/microsoft", rev = "a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
+apache-ossie-snowflake = { git = "https://github.com/apache/ossie", subdirectory = "converters/snowflake", rev = "74968116780058f42d678cba3594e35390b5be12" }
+apache-ossie-microsoft = { git = "https://github.com/apache/ossie", subdirectory = "converters/microsoft", rev = "74968116780058f42d678cba3594e35390b5be12" }
 
 [dependency-groups]
 dev = [
-    "apache-ossie-gooddata",
-    "apache-ossie-nvidia-gsf",
     "apache-ossie-snowflake",
-    "apache-ossie-wisdom",
     "apache-ossie-dbt",
     "apache-ossie-microsoft[tom]",
     "databricks-sdk>=0.133.0",
     "dbt-core>=1.12.5",
     "dbt-duckdb>=1.11.0",
     "dbt-metricflow>=0.15.0",
-    "apache-ossie-honeydew",
-    "ossie-omni",
 ]

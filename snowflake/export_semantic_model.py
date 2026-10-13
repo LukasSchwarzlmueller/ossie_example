@@ -9,7 +9,7 @@ import argparse
 import os
 import warnings
 
-from ossie_snowflake.converter import convert_ossie_to_snowflake
+from ossie_snowflake.ossie_to_snowflake import convert_ossie_to_snowflake
 
 from common.env import REPO_ROOT, load_env_file
 

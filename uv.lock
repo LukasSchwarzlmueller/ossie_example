@@ -32,7 +32,7 @@ wheels = [
 [[package]]
 name = "apache-ossie"
 version = "0.2.0.dev0"
-source = { git = "https://github.com/apache/ossie?subdirectory=python&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c#a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
+source = { git = "https://github.com/apache/ossie?subdirectory=python&rev=74968116780058f42d678cba3594e35390b5be12#74968116780058f42d678cba3594e35390b5be12" }
 dependencies = [
     { name = "pydantic" },
     { name = "pyyaml" },
@@ -49,7 +49,7 @@ dependencies = [
 [[package]]
 name = "apache-ossie-dbt"
 version = "0.2.0.dev0"
-source = { git = "https://github.com/apache/ossie?subdirectory=converters%2Fdbt&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c#a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
+source = { git = "https://github.com/apache/ossie?subdirectory=converters%2Fdbt&rev=74968116780058f42d678cba3594e35390b5be12#74968116780058f42d678cba3594e35390b5be12" }
 dependencies = [
     { name = "apache-ossie" },
     { name = "jinja2" },
@@ -59,25 +59,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "apache-ossie-gooddata"
-version = "0.2.0.dev0"
-source = { git = "https://github.com/apache/ossie?subdirectory=converters%2Fgooddata&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c#a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
-dependencies = [
-    { name = "pyyaml" },
-]
-
-[[package]]
-name = "apache-ossie-honeydew"
-version = "0.2.0.dev0"
-source = { git = "https://github.com/apache/ossie?subdirectory=converters%2Fhoneydew&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c#a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
-dependencies = [
-    { name = "pyyaml" },
-]
-
-[[package]]
 name = "apache-ossie-microsoft"
 version = "0.2.0.dev0"
-source = { git = "https://github.com/apache/ossie?subdirectory=converters%2Fmicrosoft&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c#a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
+source = { git = "https://github.com/apache/ossie?subdirectory=converters%2Fmicrosoft&rev=74968116780058f42d678cba3594e35390b5be12#74968116780058f42d678cba3594e35390b5be12" }
 dependencies = [
     { name = "pyyaml" },
     { name = "sqlglot" },
@@ -90,29 +74,12 @@ tom = [
 ]
 
 [[package]]
-name = "apache-ossie-nvidia-gsf"
-version = "0.1.0.dev0"
-source = { git = "https://github.com/apache/ossie?subdirectory=converters%2Fnvidia&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c#a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
+name = "apache-ossie-snowflake"
+version = "0.2.0.dev0"
+source = { git = "https://github.com/apache/ossie?subdirectory=converters%2Fsnowflake&rev=74968116780058f42d678cba3594e35390b5be12#74968116780058f42d678cba3594e35390b5be12" }
 dependencies = [
     { name = "pyyaml" },
     { name = "sqlglot" },
-]
-
-[[package]]
-name = "apache-ossie-snowflake"
-version = "0.2.0.dev0"
-source = { git = "https://github.com/apache/ossie?subdirectory=converters%2Fsnowflake&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c#a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
-dependencies = [
-    { name = "pyyaml" },
-]
-
-[[package]]
-name = "apache-ossie-wisdom"
-version = "0.2.0.dev0"
-source = { git = "https://github.com/apache/ossie?subdirectory=converters%2Fwisdom&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c#a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
-dependencies = [
-    { name = "apache-ossie" },
-    { name = "pyyaml" },
 ]
 
 [[package]]
@@ -904,48 +871,30 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "apache-ossie-dbt" },
-    { name = "apache-ossie-gooddata" },
-    { name = "apache-ossie-honeydew" },
     { name = "apache-ossie-microsoft", extra = ["tom"] },
-    { name = "apache-ossie-nvidia-gsf" },
     { name = "apache-ossie-snowflake" },
-    { name = "apache-ossie-wisdom" },
     { name = "databricks-sdk" },
     { name = "dbt-core" },
     { name = "dbt-duckdb" },
     { name = "dbt-metricflow" },
-    { name = "ossie-omni" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "apache-ossie", git = "https://github.com/apache/ossie?subdirectory=python&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" },
+    { name = "apache-ossie", git = "https://github.com/apache/ossie?subdirectory=python&rev=74968116780058f42d678cba3594e35390b5be12" },
     { name = "apache-ossie-databricks", git = "https://github.com/apache/ossie?subdirectory=converters%2Fdatabricks&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" },
     { name = "snowflake-connector-python", specifier = ">=4.7.2" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "apache-ossie-dbt", git = "https://github.com/apache/ossie?subdirectory=converters%2Fdbt&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" },
-    { name = "apache-ossie-gooddata", git = "https://github.com/apache/ossie?subdirectory=converters%2Fgooddata&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" },
-    { name = "apache-ossie-honeydew", git = "https://github.com/apache/ossie?subdirectory=converters%2Fhoneydew&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" },
-    { name = "apache-ossie-microsoft", extras = ["tom"], git = "https://github.com/apache/ossie?subdirectory=converters%2Fmicrosoft&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" },
-    { name = "apache-ossie-nvidia-gsf", git = "https://github.com/apache/ossie?subdirectory=converters%2Fnvidia&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" },
-    { name = "apache-ossie-snowflake", git = "https://github.com/apache/ossie?subdirectory=converters%2Fsnowflake&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" },
-    { name = "apache-ossie-wisdom", git = "https://github.com/apache/ossie?subdirectory=converters%2Fwisdom&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" },
+    { name = "apache-ossie-dbt", git = "https://github.com/apache/ossie?subdirectory=converters%2Fdbt&rev=74968116780058f42d678cba3594e35390b5be12" },
+    { name = "apache-ossie-microsoft", extras = ["tom"], git = "https://github.com/apache/ossie?subdirectory=converters%2Fmicrosoft&rev=74968116780058f42d678cba3594e35390b5be12" },
+    { name = "apache-ossie-snowflake", git = "https://github.com/apache/ossie?subdirectory=converters%2Fsnowflake&rev=74968116780058f42d678cba3594e35390b5be12" },
     { name = "databricks-sdk", specifier = ">=0.133.0" },
     { name = "dbt-core", specifier = ">=1.12.5" },
     { name = "dbt-duckdb", specifier = ">=1.11.0" },
     { name = "dbt-metricflow", specifier = ">=0.15.0" },
-    { name = "ossie-omni", git = "https://github.com/apache/ossie?subdirectory=converters%2Fomni&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" },
-]
-
-[[package]]
-name = "ossie-omni"
-version = "0.2.0.dev0"
-source = { git = "https://github.com/apache/ossie?subdirectory=converters%2Fomni&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c#a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
-dependencies = [
-    { name = "pyyaml" },
 ]
 
 [[package]]
