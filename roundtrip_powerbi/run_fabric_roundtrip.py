@@ -2,13 +2,14 @@
 
 The Power BI model goes up to Fabric and comes back down via the Fabric REST API:
 
-  1. ossie/orders_customers.yaml -> out_fabric/model.bim  (Ossie -> Power BI, plus Fabric glue below)
+  1. ossie/orders_customers.yaml -> out_fabric/model.bim  (Ossie -> Power BI; Fabric glue below
+     is applied to the uploaded copy only)
   2. upload to FABRIC_WORKSPACE_ID (create, or update the definition if a model
      with the same name already exists)
   3. download from Fabric (getDefinition, TMSL)
      -> out_fabric/orders_customers.yaml                  (Power BI -> Ossie)
 
-Only those two files are written - what went up, and what came back - then the
+Only those two files are written - the converted model and what came back - then the
 starting Ossie file is diffed against the one that came back from Fabric.
 
 Fabric glue (step 1) - two things Fabric rejects that the converter emits:
@@ -141,7 +142,7 @@ def _b64(obj: dict) -> str:
     return base64.b64encode(json.dumps(obj).encode()).decode()
 
 
-def fabric_glue(bim: dict) -> dict:
+def fabric_glue(bim: dict) -> None:
     bim["model"].setdefault("defaultPowerBIDataSourceVersion", "powerBI_V3")
     for table in bim["model"]["tables"]:
         if not any(p.get("mode") == "directLake" for p in table.get("partitions", [])):
@@ -151,7 +152,6 @@ def fabric_glue(bim: dict) -> dict:
                 print(f"  {table['name']}.{column['name']}: dropping `{column.pop('expression')}` (Direct Lake)")
                 del column["type"]
                 column["sourceColumn"] = column["name"]
-    return bim
 
 
 def main() -> None:
@@ -182,8 +182,9 @@ def main() -> None:
 
         print("Step 1: Ossie -> Power BI (out_fabric/model.bim)")
         source = {"workspaceId": workspace_id, "itemId": lakehouse_id}
-        bim = fabric_glue(convert_ossie_to_semantic_model(original_ossie, source=source))
-        (FABRIC_OUT / "model.bim").write_text(json.dumps(bim, indent=2))
+        bim = convert_ossie_to_semantic_model(original_ossie, source=source)
+        (FABRIC_OUT / "model.bim").write_text(json.dumps(bim, indent=2))  # converter output, before the glue
+        fabric_glue(bim)  # in place, only what gets uploaded
 
         print(f"Step 2: upload '{bim['name']}' to workspace {workspace_id}")
         model_id, action = fabric.upload(bim, os.environ.get("FABRIC_FOLDER_ID"))

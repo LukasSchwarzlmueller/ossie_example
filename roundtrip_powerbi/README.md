@@ -25,7 +25,7 @@ Ossie -> Fabric semantic model -> Ossie, through a real Fabric workspace.
    ```
    It converts to `model.bim`, uploads to Fabric, downloads it again,
    converts back to Ossie and prints a diff. It writes two files to show:
-   - `out_fabric/model.bim`, the model that goes into Fabric
+   - `out_fabric/model.bim`, the Ossie -> Power BI conversion (Fabric gets it with two fixes, see the script)
    - `out_fabric/orders_customers.yaml`, the Ossie file that comes back
 3. **Fabric:** open the `sales_demo` semantic model: Direct Lake, the measures
    and the relationship, plus one visual (Total Revenue by Customer Segment).
