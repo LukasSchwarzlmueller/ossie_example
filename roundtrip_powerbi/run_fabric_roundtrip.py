@@ -3,16 +3,16 @@
 Same idea as run_roundtrip.py, but the Power BI model actually goes up to Fabric
 and comes back down via the Fabric REST API instead of staying a local file:
 
-  1. ossie/orders_customers.yaml     -> out_fabric/model.bim             (Ossie -> Power BI)
-  2. out_fabric/model.bim            -> out_fabric/model_uploaded.bim    (Fabric glue, see below)
-  3. upload to FABRIC_WORKSPACE_ID   (create, or update the definition if a model
-                                      with the same name already exists)
-  4. download from Fabric            -> out_fabric/model_from_fabric.bim (getDefinition, TMSL)
-  5. out_fabric/model_from_fabric.bim -> out_fabric/ossie_back/orders_customers.yaml (Power BI -> Ossie)
+  1. ossie/orders_customers.yaml -> out_fabric/model.bim  (Ossie -> Power BI, plus Fabric glue below)
+  2. upload to FABRIC_WORKSPACE_ID (create, or update the definition if a model
+     with the same name already exists)
+  3. download from Fabric (getDefinition, TMSL)
+     -> out_fabric/orders_customers.yaml                  (Power BI -> Ossie)
 
-Then diffs the starting Ossie file against the one that came back from Fabric.
+Only those two files are written - what went up, and what came back - then the
+starting Ossie file is diffed against the one that came back from Fabric.
 
-Fabric glue (step 2) - two things Fabric rejects that the converter emits:
+Fabric glue (step 1) - two things Fabric rejects that the converter emits:
   - it only imports models marked `defaultPowerBIDataSourceVersion: powerBI_V3`
   - Direct Lake tables can't hold calculated columns, so those fall back to the
     physical column of the same name (the DAX expression is lost - visible in the diff)
@@ -44,7 +44,6 @@ from run_roundtrip import INPUT, PLACEHOLDER, ROUNDTRIP_DIR, show_diff
 logging.getLogger("ossie_microsoft").addHandler(logging.NullHandler())
 
 FABRIC_OUT = ROUNDTRIP_DIR / "out_fabric"  # own folder, run_roundtrip.py wipes out/
-OSSIE_BACK_DIR = FABRIC_OUT / "ossie_back"
 API = "https://api.fabric.microsoft.com/v1"
 RESOURCE = "https://api.fabric.microsoft.com"
 WINDOWS_AZ = r"C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin\az.cmd"
@@ -132,7 +131,6 @@ def _b64(obj: dict) -> str:
 
 
 def fabric_glue(bim: dict) -> dict:
-    bim = json.loads(json.dumps(bim))  # deep copy, model.bim stays the converter's output
     bim["model"].setdefault("defaultPowerBIDataSourceVersion", "powerBI_V3")
     for table in bim["model"]["tables"]:
         if not any(p.get("mode") == "directLake" for p in table.get("partitions", [])):
@@ -163,7 +161,7 @@ def main() -> None:
 
     if FABRIC_OUT.exists():
         shutil.rmtree(FABRIC_OUT)
-    OSSIE_BACK_DIR.mkdir(parents=True)
+    FABRIC_OUT.mkdir()
 
     fabric = Fabric(get_token(), workspace_id)
 
@@ -173,30 +171,23 @@ def main() -> None:
 
         print("Step 1: Ossie -> Power BI (out_fabric/model.bim)")
         source = {"workspaceId": workspace_id, "itemId": lakehouse_id}
-        bim = convert_ossie_to_semantic_model(original_ossie, source=source)
+        bim = fabric_glue(convert_ossie_to_semantic_model(original_ossie, source=source))
         (FABRIC_OUT / "model.bim").write_text(json.dumps(bim, indent=2))
 
-        print("Step 2: Fabric glue (out_fabric/model_uploaded.bim)")
-        uploaded = fabric_glue(bim)
-        (FABRIC_OUT / "model_uploaded.bim").write_text(json.dumps(uploaded, indent=2))
-
-        print(f"Step 3: upload '{uploaded['name']}' to workspace {workspace_id}")
-        model_id, action = fabric.upload(uploaded, os.environ.get("FABRIC_FOLDER_ID"))
+        print(f"Step 2: upload '{bim['name']}' to workspace {workspace_id}")
+        model_id, action = fabric.upload(bim, os.environ.get("FABRIC_FOLDER_ID"))
         print(f"  {action} semantic model {model_id}")
 
-        print("Step 4: download from Fabric (out_fabric/model_from_fabric.bim)")
+        print("Step 3: download from Fabric, Power BI -> Ossie (out_fabric/orders_customers.yaml)")
         downloaded = fabric.download(model_id)
         # Fabric keeps the name on the item (displayName) and leaves it out of model.bim
-        downloaded = {"name": uploaded["name"], **downloaded}
-        (FABRIC_OUT / "model_from_fabric.bim").write_text(json.dumps(downloaded, indent=2))
-
-        print("Step 5: Power BI -> Ossie (out_fabric/ossie_back/orders_customers.yaml)")
+        downloaded = {"name": bim["name"], **downloaded}
         roundtripped_ossie = convert_semantic_model_to_ossie(downloaded)
-        (OSSIE_BACK_DIR / "orders_customers.yaml").write_text(roundtripped_ossie)
+        (FABRIC_OUT / "orders_customers.yaml").write_text(roundtripped_ossie)
 
     print("\nOssie side: start vs back from Fabric")
     show_diff(original_ossie, roundtripped_ossie,
-              "ossie/orders_customers.yaml", "out_fabric/ossie_back/orders_customers.yaml")
+              "ossie/orders_customers.yaml", "out_fabric/orders_customers.yaml")
 
 
 if __name__ == "__main__":

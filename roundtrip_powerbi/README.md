@@ -24,7 +24,9 @@ Ossie -> Fabric semantic model -> Ossie, through a real Fabric workspace.
    uv run roundtrip_powerbi/run_fabric_roundtrip.py
    ```
    It converts to `model.bim`, uploads to Fabric, downloads it again,
-   converts back to Ossie and prints a diff.
+   converts back to Ossie and prints a diff. It writes two files to show:
+   - `out_fabric/model.bim`, the model that goes into Fabric
+   - `out_fabric/orders_customers.yaml`, the Ossie file that comes back
 3. **Fabric:** open the `sales_demo` semantic model: Direct Lake, the measures
    and the relationship, plus one visual (Total Revenue by Customer Segment).
 4. **Diff:** group the differences into three kinds:
