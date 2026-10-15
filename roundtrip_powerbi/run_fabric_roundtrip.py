@@ -2,12 +2,12 @@
 
 The Power BI model goes up to Fabric and comes back down via the Fabric REST API:
 
-  1. ossie/orders_customers.yaml -> out_fabric/model.bim  (Ossie -> Power BI; Fabric glue below
+  1. ossie/orders_customers.yaml -> powerbi/model.bim  (Ossie -> Power BI; Fabric glue below
      is applied to the uploaded copy only)
   2. upload to FABRIC_WORKSPACE_ID (create, or update the definition if a model
      with the same name already exists)
   3. download from Fabric (getDefinition, TMSL)
-     -> out_fabric/orders_customers.yaml                  (Power BI -> Ossie)
+     -> ossie_from_fabric/orders_customers.yaml  (Power BI -> Ossie)
 
 Only those two files are written - the converted model and what came back - then the
 starting Ossie file is diffed against the one that came back from Fabric.
@@ -45,7 +45,8 @@ logging.getLogger("ossie_microsoft").addHandler(logging.NullHandler())
 
 ROUNDTRIP_DIR = REPO_ROOT / "roundtrip_powerbi"
 INPUT = ROUNDTRIP_DIR / "ossie" / "orders_customers.yaml"
-FABRIC_OUT = ROUNDTRIP_DIR / "out_fabric"
+POWERBI_DIR = ROUNDTRIP_DIR / "powerbi"
+OSSIE_BACK_DIR = ROUNDTRIP_DIR / "ossie_from_fabric"
 PLACEHOLDER = "__catalog__.__schema__"
 API = "https://api.fabric.microsoft.com/v1"
 RESOURCE = "https://api.fabric.microsoft.com"
@@ -170,9 +171,10 @@ def main() -> None:
         raise SystemExit("Set FABRIC_WORKSPACE_ID and FABRIC_LAKEHOUSE_ID in .env")
     original_ossie = INPUT.read_text().replace(PLACEHOLDER, f"{lakehouse}.{schema}")
 
-    if FABRIC_OUT.exists():
-        shutil.rmtree(FABRIC_OUT)
-    FABRIC_OUT.mkdir()
+    for folder in (POWERBI_DIR, OSSIE_BACK_DIR):
+        if folder.exists():
+            shutil.rmtree(folder)
+        folder.mkdir()
 
     fabric = Fabric(get_token(), workspace_id)
 
@@ -180,26 +182,26 @@ def main() -> None:
         if not args.warnings:
             warnings.simplefilter("ignore")
 
-        print("Step 1: Ossie -> Power BI (out_fabric/model.bim)")
+        print("Step 1: Ossie -> Power BI (powerbi/model.bim)")
         source = {"workspaceId": workspace_id, "itemId": lakehouse_id}
         bim = convert_ossie_to_semantic_model(original_ossie, source=source)
-        (FABRIC_OUT / "model.bim").write_text(json.dumps(bim, indent=2))  # converter output, before the glue
+        (POWERBI_DIR / "model.bim").write_text(json.dumps(bim, indent=2))  # converter output, before the glue
         fabric_glue(bim)  # in place, only what gets uploaded
 
         print(f"Step 2: upload '{bim['name']}' to workspace {workspace_id}")
         model_id, action = fabric.upload(bim, os.environ.get("FABRIC_FOLDER_ID"))
         print(f"  {action} semantic model {model_id}")
 
-        print("Step 3: download from Fabric, Power BI -> Ossie (out_fabric/orders_customers.yaml)")
+        print("Step 3: download from Fabric, Power BI -> Ossie (ossie_from_fabric/orders_customers.yaml)")
         downloaded = fabric.download(model_id)
         # Fabric keeps the name on the item (displayName) and leaves it out of model.bim
         downloaded = {"name": bim["name"], **downloaded}
         roundtripped_ossie = convert_semantic_model_to_ossie(downloaded)
-        (FABRIC_OUT / "orders_customers.yaml").write_text(roundtripped_ossie)
+        (OSSIE_BACK_DIR / "orders_customers.yaml").write_text(roundtripped_ossie)
 
     print("\nOssie side: start vs back from Fabric")
     show_diff(original_ossie, roundtripped_ossie,
-              "ossie/orders_customers.yaml", "out_fabric/orders_customers.yaml")
+              "ossie/orders_customers.yaml", "ossie_from_fabric/orders_customers.yaml")
 
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@ Ossie -> Fabric semantic model -> Ossie, through a real Fabric workspace.
    ```powershell
    az login --tenant <tenant> --allow-no-subscriptions
    ```
-4. Do a dry run and keep `out_fabric/` as a fallback.
+4. Do a dry run and keep `powerbi/` and `ossie_from_fabric/` as a fallback.
 
 ## Demo
 
@@ -25,8 +25,8 @@ Ossie -> Fabric semantic model -> Ossie, through a real Fabric workspace.
    ```
    It converts to `model.bim`, uploads to Fabric, downloads it again,
    converts back to Ossie and prints a diff. It writes two files to show:
-   - `out_fabric/model.bim`, the Ossie -> Power BI conversion (Fabric gets it with two fixes, see the script)
-   - `out_fabric/orders_customers.yaml`, the Ossie file that comes back
+   - `powerbi/model.bim`, the Ossie -> Power BI conversion (Fabric gets it with two fixes, see the script)
+   - `ossie_from_fabric/orders_customers.yaml`, the Ossie file that comes back
 3. **Fabric:** open the `sales_demo` semantic model: Direct Lake, the measures
    and the relationship, plus one visual (Total Revenue by Customer Segment).
 4. **Diff:** group the differences into three kinds:
