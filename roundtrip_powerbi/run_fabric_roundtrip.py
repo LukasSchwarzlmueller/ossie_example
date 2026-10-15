@@ -1,7 +1,6 @@
 """Ossie -> Fabric -> Ossie round trip, through a real Fabric workspace.
 
-Same idea as run_roundtrip.py, but the Power BI model actually goes up to Fabric
-and comes back down via the Fabric REST API instead of staying a local file:
+The Power BI model goes up to Fabric and comes back down via the Fabric REST API:
 
   1. ossie/orders_customers.yaml -> out_fabric/model.bim  (Ossie -> Power BI, plus Fabric glue below)
   2. upload to FABRIC_WORKSPACE_ID (create, or update the definition if a model
@@ -25,6 +24,7 @@ via powershell.exe - on WSL behind a device-compliance policy only the Windows o
 
 import argparse
 import base64
+import difflib
 import json
 import logging
 import os
@@ -37,13 +37,15 @@ import warnings
 
 from ossie_microsoft import convert_ossie_to_semantic_model, convert_semantic_model_to_ossie
 
-from common.env import load_env_file
-from run_roundtrip import INPUT, PLACEHOLDER, ROUNDTRIP_DIR, show_diff
+from common.env import REPO_ROOT, load_env_file
 
 # every ossie_microsoft warning is also logged; keep --warnings the only way to see them
 logging.getLogger("ossie_microsoft").addHandler(logging.NullHandler())
 
-FABRIC_OUT = ROUNDTRIP_DIR / "out_fabric"  # own folder, run_roundtrip.py wipes out/
+ROUNDTRIP_DIR = REPO_ROOT / "roundtrip_powerbi"
+INPUT = ROUNDTRIP_DIR / "ossie" / "orders_customers.yaml"
+FABRIC_OUT = ROUNDTRIP_DIR / "out_fabric"
+PLACEHOLDER = "__catalog__.__schema__"
 API = "https://api.fabric.microsoft.com/v1"
 RESOURCE = "https://api.fabric.microsoft.com"
 WINDOWS_AZ = r"C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin\az.cmd"
@@ -124,6 +126,15 @@ class Fabric:
         result = self.call("POST", f"{self.workspace}/semanticModels/{model_id}/getDefinition?format=TMSL")
         part = next(p for p in result["definition"]["parts"] if p["path"] == "model.bim")
         return json.loads(base64.b64decode(part["payload"]))
+
+
+def show_diff(a: str, b: str, a_name: str, b_name: str) -> None:
+    if a == b:
+        print(f"  identical: {a_name} == {b_name}")
+        return
+    print("".join(difflib.unified_diff(
+        a.splitlines(keepends=True), b.splitlines(keepends=True), a_name, b_name
+    )))
 
 
 def _b64(obj: dict) -> str:

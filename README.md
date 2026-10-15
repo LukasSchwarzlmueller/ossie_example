@@ -175,13 +175,12 @@ measure lives on. See NOTES.md.
 
 ## Power BI round trip
 
-Ossie -> Power BI -> Ossie, either locally or through a real Fabric
-workspace (upload the semantic model, pull it back with `getDefinition`,
-convert it back to Ossie and diff it):
+Ossie -> Power BI -> Ossie through a real Fabric workspace (upload the
+semantic model, pull it back with `getDefinition`, convert it back to Ossie
+and diff it):
 
 ```bash
-uv run roundtrip_powerbi/run_roundtrip.py          # local only
-uv run roundtrip_powerbi/run_fabric_roundtrip.py   # via Fabric, needs `az` login + FABRIC_* in .env
+uv run roundtrip_powerbi/run_fabric_roundtrip.py   # needs `az` login + FABRIC_* in .env
 ```
 
 Setup and demo steps are in
@@ -210,7 +209,7 @@ dropped with a warning. Details in
 - `<target>/deploy_to_*.py` / `dbt run` + `mf query` - deploys/queries against the real thing.
 - `microsoft/package_for_fabric.py`, `microsoft/upload_bim_to_fabric.ipynb` - the two ways to get the exported model into a Fabric workspace.
 - `powerbi_databricks/` - the reverse path, Power BI semantic model -> Databricks Metric View, with its own README.
-- `roundtrip_powerbi/` - Ossie -> Power BI -> Ossie, locally and through a real Fabric workspace, with its own README.
+- `roundtrip_powerbi/` - Ossie -> Power BI -> Ossie through a real Fabric workspace, with its own README.
 - `roundtrip_databricks/run_roundtrip.py` - not part of the talk; a side check that the Databricks export/import pair is lossless.
 - `common/env.py` - shared `.env` loading, used by every export/deploy script.
 
