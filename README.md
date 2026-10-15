@@ -184,8 +184,7 @@ uv run roundtrip_powerbi/run_roundtrip.py          # local only
 uv run roundtrip_powerbi/run_fabric_roundtrip.py   # via Fabric, needs `az` login + FABRIC_* in .env
 ```
 
-Setup (including `az` login on WSL behind Conditional Access), the fixes
-Fabric needs and what the diff shows are covered in
+Setup and demo steps are in
 [roundtrip_powerbi/README.md](roundtrip_powerbi/README.md).
 
 ## Power BI -> Databricks
