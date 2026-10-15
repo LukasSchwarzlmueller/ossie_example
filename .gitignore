@@ -18,3 +18,4 @@ microsoft/*.SemanticModel/
 results/
 powerbi_databricks/metric_view_from_*.yaml
 roundtrip_powerbi/out/
+roundtrip_powerbi/out_fabric/
