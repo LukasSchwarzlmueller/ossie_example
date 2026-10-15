@@ -1,17 +1,17 @@
 """Ossie -> Power BI -> Ossie round trip, for the internal talk's Power BI demo.
 
 Starts from roundtrip_powerbi/ossie/orders_customers.yaml (a copy of the
-Microsoft model) and writes every intermediate file to roundtrip_powerbi/out/,
-so each step can be opened live:
+Microsoft model) and writes two files to roundtrip_powerbi/out/:
 
-  1. ossie/orders_customers.yaml          -> out/tmsl/model.bim        (Ossie -> Power BI)
-  2. out/tmsl/model.bim                   -> out/tmdl/                 (TMDL folder, --tmdl only)
-  3. out/tmsl/model.bim                   -> out/ossie_back/orders_customers.yaml  (Power BI -> Ossie)
-  4. out/ossie_back/orders_customers.yaml -> out/tmsl/model_again.bim  (Ossie -> Power BI again)
+  1. ossie/orders_customers.yaml -> out/model.bim              (Ossie -> Power BI)
+  2. out/model.bim               -> out/orders_customers.yaml  (Power BI -> Ossie)
+     (--tmdl also writes out/model.bim as the TMDL folder out/tmdl/)
 
 Then prints two diffs: the starting Ossie file vs the round-tripped one, and
-the two model.bim files. Differences are expected on the Ossie side, so a
-mismatch is reported, not treated as an error.
+model.bim vs the model.bim the round-tripped Ossie file converts to (kept in
+memory only). Differences are expected on the Ossie side, so a mismatch is
+reported, not treated as an error. run_fabric_roundtrip.py does the same
+through a real Fabric workspace.
 
 Replaces the `__catalog__.__schema__` source placeholder the same way
 microsoft/export_semantic_model.py does. --tmdl needs the `tom` extra and its
@@ -32,9 +32,7 @@ from common.env import REPO_ROOT, load_env_file
 ROUNDTRIP_DIR = REPO_ROOT / "roundtrip_powerbi"
 INPUT = ROUNDTRIP_DIR / "ossie" / "orders_customers.yaml"
 OUT = ROUNDTRIP_DIR / "out"
-TMSL_DIR = OUT / "tmsl"
 TMDL_DIR = OUT / "tmdl"
-OSSIE_BACK_DIR = OUT / "ossie_back"
 PLACEHOLDER = "__catalog__.__schema__"
 
 
@@ -65,44 +63,39 @@ def main() -> None:
 
     if OUT.exists():
         shutil.rmtree(OUT)
-    for folder in (TMSL_DIR, OSSIE_BACK_DIR):
-        folder.mkdir(parents=True)
+    OUT.mkdir()
 
     with warnings.catch_warnings():
         if not args.warnings:
             warnings.simplefilter("ignore")
 
-        print("Step 1: Ossie -> Power BI (out/tmsl/model.bim)")
+        print("Step 1: Ossie -> Power BI (out/model.bim)")
         bim = convert_ossie_to_semantic_model(original_ossie)
         bim_text = json.dumps(bim, indent=2)
-        (TMSL_DIR / "model.bim").write_text(bim_text)
+        (OUT / "model.bim").write_text(bim_text)
 
         if args.tmdl:
             from ossie_microsoft.tom import _assembly_directory, _load_tom
 
-            print("Step 2: model.bim -> TMDL folder (out/tmdl/)")
+            print("  --tmdl: model.bim -> TMDL folder (out/tmdl/)")
             tom = _load_tom(_assembly_directory(None))
             database = tom.JsonSerializer.DeserializeDatabase(bim_text)
             tom.TmdlSerializer.SerializeDatabaseToFolder(database, str(TMDL_DIR))
-        else:
-            print("Step 2: skipped (pass --tmdl for the TMDL folder)")
 
-        print("Step 3: Power BI -> Ossie (out/ossie_back/orders_customers.yaml)")
+        print("Step 2: Power BI -> Ossie (out/orders_customers.yaml)")
         roundtripped_ossie = convert_semantic_model_to_ossie(bim)
-        (OSSIE_BACK_DIR / "orders_customers.yaml").write_text(roundtripped_ossie)
+        (OUT / "orders_customers.yaml").write_text(roundtripped_ossie)
 
-        print("Step 4: Ossie -> Power BI again (out/tmsl/model_again.bim)")
         bim_again_text = json.dumps(convert_ossie_to_semantic_model(roundtripped_ossie), indent=2)
-        (TMSL_DIR / "model_again.bim").write_text(bim_again_text)
 
     print("\nOssie side: start vs round-tripped")
-    show_diff(original_ossie, roundtripped_ossie, "ossie/orders_customers.yaml", "out/ossie_back/orders_customers.yaml")
+    show_diff(original_ossie, roundtripped_ossie, "ossie/orders_customers.yaml", "out/orders_customers.yaml")
 
-    print("\nPower BI side: first vs second model.bim")
+    print("\nPower BI side: model.bim vs converting the round-tripped Ossie file again")
     if json.loads(bim_text) == json.loads(bim_again_text):
-        print("  same content: out/tmsl/model.bim == out/tmsl/model_again.bim (only JSON key order differs)")
+        print("  same content (only JSON key order differs)")
     else:
-        show_diff(bim_text, bim_again_text, "out/tmsl/model.bim", "out/tmsl/model_again.bim")
+        show_diff(bim_text, bim_again_text, "out/model.bim", "model.bim (again)")
 
 
 if __name__ == "__main__":
