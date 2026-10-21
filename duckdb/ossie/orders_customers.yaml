@@ -103,7 +103,7 @@ semantic_model:
     expression:
       dialects:
       - dialect: ANSI_SQL
-        expression: COUNT(*)
+        expression: COUNT(orders.*)
     description: Number of orders
     datatype: Integer
   - name: avg_order_value
