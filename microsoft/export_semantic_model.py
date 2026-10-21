@@ -6,7 +6,7 @@ Pass --warnings to see what didn't survive the conversion.
 
 --tmdl and --tmdl-folder both require the `tom` extra (Microsoft's .NET TOM library via
 pythonnet) and its assemblies restored to .tom/assemblies - see
-converters/microsoft/scripts/restore_tom.py in the apache/ossie repo.
+microsoft/scripts/restore_tom.py in the apache/ossie-converters repo.
 
 --tmdl-folder calls Microsoft.AnalysisServices.Tabular.TmdlSerializer.SerializeDatabaseToFolder
 directly (via ossie_microsoft.tom's private _load_tom/_assembly_directory helpers - not part of

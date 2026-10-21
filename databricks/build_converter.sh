@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
-# Build the Java Ossie -> Databricks converter at a pinned apache/ossie commit.
-# Needs git, JDK 21+ and Maven. To update the converter, change OSSIE_REV and rerun.
+# Build the Java Ossie -> Databricks converter at a pinned apache/ossie-converters commit.
+# Needs git, JDK 21+ and Maven. To update the converter, change CONVERTERS_REV and rerun.
 set -euo pipefail
 
-OSSIE_REV=7c03c46eae6c9946f50d9aa6c36918cdfb28f540
-DIR="$(cd "$(dirname "$0")/.." && pwd)/.ossie"
+CONVERTERS_REV=853c52986cd03508fe233fbab8c4213890943095
+DIR="$(cd "$(dirname "$0")/.." && pwd)/.ossie-converters"
 
 if [ ! -d "$DIR/.git" ]; then
-  git clone https://github.com/apache/ossie "$DIR"
+  git clone https://github.com/apache/ossie-converters "$DIR"
 fi
 git -C "$DIR" fetch origin
-git -C "$DIR" checkout "$OSSIE_REV"
+git -C "$DIR" checkout "$CONVERTERS_REV"
 
-(cd "$DIR/converters/databricks/java" && mvn clean package)
+(cd "$DIR/databricks/java" && mvn clean package)
 
-JAR=$(ls "$DIR"/converters/databricks/java/target/ossie-databricks-converter-*.jar | grep -v -e sources -e javadoc | head -n 1)
+JAR=$(ls "$DIR"/databricks/java/target/ossie-databricks-converter-*.jar | grep -v -e sources -e javadoc | head -n 1)
 echo
 echo "Built: $JAR"
 echo "export_metric_view.py finds it automatically; set OSSIE_DATABRICKS_JAR in .env to use another jar."

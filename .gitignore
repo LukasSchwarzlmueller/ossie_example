@@ -9,6 +9,7 @@ logs/
 databricks/metric_view.yaml
 databricks_python_deprecated/metric_view.yaml
 .ossie/
+.ossie-converters/
 snowflake/semantic_model.yaml
 roundtrip_databricks/ossie/orders_customers.yaml
 roundtrip_databricks/metric_view.yaml

@@ -18,18 +18,25 @@ build-backend = "hatchling.build"
 packages = ["src/common"]
 
 [tool.uv.sources]
-# Pinned to a commit after upstream's internal OSI -> Ossie rename
-# (OSIDocument -> OssieDocument, osi_to_msi.py -> ossie_to_msi.py, etc) and
-# after its move to flat semantic model documents (no `semantic_model:` list).
-# apache-ossie-databricks stays on the older commit on purpose: upstream
-# removed the Python Databricks converter (#531) and the roundtrip_databricks,
-# powerbi_databricks and databricks_python_deprecated scripts still use it. It
-# only depends on pyyaml, so it does not conflict with the newer apache-ossie.
-apache-ossie = { git = "https://github.com/apache/ossie", subdirectory = "python", rev = "74968116780058f42d678cba3594e35390b5be12" }
-apache-ossie-dbt = { git = "https://github.com/apache/ossie", subdirectory = "converters/dbt", rev = "74968116780058f42d678cba3594e35390b5be12" }
+# Upstream split into two repos on 2026-10-21: apache/ossie keeps the spec and
+# the core `apache-ossie` package (python/), apache/ossie-converters has one
+# top-level folder per converter and pins apache/ossie as its `ossie/`
+# submodule. Core comes from that submodule, not from apache/ossie directly:
+# the dbt converter declares `apache-ossie = { path = "../ossie/python" }`, and
+# uv refuses two different URLs for the same package. Bumping the one
+# ossie-converters rev below bumps core to the version upstream tests against.
+#
+# apache-ossie-databricks stays on an old apache/ossie commit on purpose:
+# upstream removed the Python Databricks converter (#531), before the split,
+# and roundtrip_databricks, powerbi_databricks and databricks_python_deprecated
+# still use it. It only depends on pyyaml, so it does not conflict with the
+# newer apache-ossie. databricks/ uses the Java converter instead
+# (databricks/build_converter.sh).
+apache-ossie = { git = "https://github.com/apache/ossie-converters", subdirectory = "ossie/python", rev = "853c52986cd03508fe233fbab8c4213890943095" }
+apache-ossie-dbt = { git = "https://github.com/apache/ossie-converters", subdirectory = "dbt", rev = "853c52986cd03508fe233fbab8c4213890943095" }
+apache-ossie-snowflake = { git = "https://github.com/apache/ossie-converters", subdirectory = "snowflake", rev = "853c52986cd03508fe233fbab8c4213890943095" }
+apache-ossie-microsoft = { git = "https://github.com/apache/ossie-converters", subdirectory = "microsoft", rev = "853c52986cd03508fe233fbab8c4213890943095" }
 apache-ossie-databricks = { git = "https://github.com/apache/ossie", subdirectory = "converters/databricks", rev = "a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
-apache-ossie-snowflake = { git = "https://github.com/apache/ossie", subdirectory = "converters/snowflake", rev = "74968116780058f42d678cba3594e35390b5be12" }
-apache-ossie-microsoft = { git = "https://github.com/apache/ossie", subdirectory = "converters/microsoft", rev = "74968116780058f42d678cba3594e35390b5be12" }
 
 [dependency-groups]
 dev = [

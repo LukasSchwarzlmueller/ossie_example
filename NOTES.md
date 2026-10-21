@@ -89,6 +89,27 @@ still worked: `ossie_snowflake.converter.convert_osi_to_snowflake` ->
 never imports typed classes from the `ossie` package at all, confirmed by
 grepping its source, so it was never exposed to any of this renaming.
 
+**Third round: upstream split into two repos (2026-10-21, upstream #523).**
+`apache/ossie` kept the spec and the core `apache-ossie` package
+(`python/`); every converter moved to the top level of
+`apache/ossie-converters` (`converters/microsoft` -> `microsoft`, etc.),
+which pins `apache/ossie` as its `ossie/` git submodule. The old
+`converters/...` paths still resolve at older `apache/ossie` commits, so
+nothing broke on the day, but no converter fix lands there any more.
+Re-pinned dbt, Snowflake and Microsoft to `ossie-converters@853c529`. The
+first attempt pinned core straight from `apache/ossie` and failed to lock:
+the dbt converter declares `apache-ossie = { path = "../ossie/python" }`
+(its submodule), and uv refuses two URLs for one package. Core now comes
+from `ossie-converters`, `subdirectory = "ossie/python"`, so one rev bumps
+core and converters together, to the pair upstream tests. uv fetches the
+submodule on its own. The Python Databricks converter, already removed
+upstream before the split, stays on `apache/ossie@a5bdbbc`, and
+`databricks/build_converter.sh` now builds the Java one from
+`ossie-converters` into `.ossie-converters/` (the Java source is unchanged
+from the `7c03c46` it built before). Verified like the rounds above: every
+export (Snowflake, Microsoft TMSL and TMDL, both Databricks Python paths,
+the dbt manifest and `mf query`) came out byte-identical.
+
 ## Databricks: one structural conflict with dbt-core's native loader, otherwise clean
 
 Converting the same model with `ossie-databricks export` reveals two

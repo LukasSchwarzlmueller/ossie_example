@@ -10,7 +10,7 @@ uv run databricks/export_metric_view.py    # add --warnings to see what is dropp
 uv run databricks/deploy_to_databricks.py  # needs DATABRICKS_* in .env
 ```
 
-To update the converter, change `OSSIE_REV` in `build_converter.sh`, or point
+To update the converter, change `CONVERTERS_REV` in `build_converter.sh`, or point
 `OSSIE_DATABRICKS_JAR` at your own build.
 
 ```sql

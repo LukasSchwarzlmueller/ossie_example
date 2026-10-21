@@ -37,8 +37,8 @@ cp .env.example .env   # only for deploying to Databricks, Snowflake or Fabric
 fall back to default names.
 
 Anything TMDL needs a .NET runtime and Microsoft's TOM assemblies in
-`.tom/assemblies`, restored with `converters/microsoft/scripts/restore_tom.py`
-from the [apache/ossie](https://github.com/apache/ossie) repo. The TMSL
+`.tom/assemblies`, restored with `microsoft/scripts/restore_tom.py`
+from the [apache/ossie-converters](https://github.com/apache/ossie-converters) repo. The TMSL
 (`model.bim`) paths need neither.
 
 ## Quick start
@@ -76,7 +76,7 @@ Databricks, Snowflake and DuckDB return the same numbers.
 - `<target>/export_*.py`: offline conversion, writes the target's native file.
 - `<target>/deploy_to_*.py`: deploys against a real workspace or account.
 - `src/common/`: shared `.env` loading and the Java converter wrapper.
-- `pyproject.toml`: pins the `apache-ossie-*` packages to one upstream commit.
+- `pyproject.toml`: pins the `apache-ossie-*` packages to one [apache/ossie-converters](https://github.com/apache/ossie-converters) commit (core comes from its `ossie/` submodule); only the old Python Databricks converter stays on an older [apache/ossie](https://github.com/apache/ossie) commit.
 
 ## Further reading
 
