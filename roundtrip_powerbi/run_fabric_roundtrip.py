@@ -10,7 +10,8 @@ The Power BI model goes up to Fabric and comes back down via the Fabric REST API
      -> ossie_from_fabric/orders_customers.yaml  (Power BI -> Ossie)
 
 Only those two files are written - the converted model and what came back - then the
-starting Ossie file is diffed against the one that came back from Fabric.
+starting Ossie file is compared with the one that came back from Fabric: every change,
+per object, as -/+ lines with the reason next to it (`--diff` adds the raw line diff).
 
 Fabric glue (step 1) - two things Fabric rejects that the converter emits:
   - it only imports models marked `defaultPowerBIDataSourceVersion: powerBI_V3`
@@ -31,10 +32,13 @@ import logging
 import os
 import shutil
 import subprocess
+import sys
 import time
 import urllib.error
 import urllib.request
 import warnings
+
+import yaml
 
 from ossie_microsoft import convert_ossie_to_semantic_model, convert_semantic_model_to_ossie
 
@@ -130,6 +134,146 @@ class Fabric:
         return json.loads(base64.b64decode(part["payload"]))
 
 
+def flatten(model: dict) -> dict[tuple[str, str], object]:
+    """{(object, attribute): value} for one Ossie model, so two models compare key by key.
+
+    Objects are "model", a dataset, "dataset.field", a metric or "relationship from -> to".
+    Lists are keyed by what identifies an item (name, dialect, vendor), not by position,
+    so reordering is not a difference.
+    """
+    out = {}
+
+    def walk(obj: str, attr: str, value) -> None:
+        if isinstance(value, dict):
+            for key, child in value.items():
+                walk(obj, f"{attr}.{key}" if attr else key, child)
+        elif isinstance(value, list) and value and all(isinstance(v, dict) for v in value):
+            for item in value:
+                if "dialect" in item:  # expression.dialects[] -> "ANSI_SQL expression"
+                    out[(obj, f"{item['dialect']} expression")] = item.get("expression")
+                    continue
+                key = item.get("vendor_name") or item.get("name")
+                rest = {k: v for k, v in item.items() if k not in ("vendor_name", "name")}
+                walk(obj, f"{attr}.{key}", rest)
+        else:
+            out[(obj, attr)] = value
+
+    for key, value in model.items():
+        if key not in ("datasets", "relationships", "metrics"):
+            walk("model", key, value)
+    for dataset in model.get("datasets", []):
+        for key, value in dataset.items():
+            if key == "fields":
+                for field in value:
+                    for fkey, fvalue in field.items():
+                        if fkey != "name":
+                            walk(f"{dataset['name']}.{field['name']}", fkey, fvalue)
+            elif key != "name":
+                walk(dataset["name"], key, value)
+    for rel in model.get("relationships", []):
+        obj = f"relationship {rel['from']} -> {rel['to']}"
+        for key, value in rel.items():
+            if key not in ("from", "to"):
+                walk(obj, key, value)
+    for metric in model.get("metrics", []):
+        for key, value in metric.items():
+            if key != "name":
+                walk(metric["name"], key, value)
+    return out
+
+
+SQL_DIALECTS = ("OSSIE_SQL_2026", "ANSI_SQL", "SNOWFLAKE", "DATABRICKS")
+
+
+def reason(obj: str, attr: str, kind: str) -> str:
+    """Why this demo model changes on the way through Fabric; "" when there's no known reason."""
+    is_field = "." in obj
+    if attr == "label":
+        return "Power BI has no separate display label"
+    if attr == "datatype" and not is_field:
+        return "Power BI measures have no declared type"
+    if attr == "dimension.is_time":
+        return "Power BI only marks date columns as time"
+    if attr == "source":
+        return "Direct Lake: the lakehouse is in the model connection (see model above)"
+    if obj.startswith("relationship") and attr == "name":
+        return "Power BI relationships have no real name, so it is built from the columns (original kept in custom_extensions)"
+    if attr.endswith(" expression"):
+        if is_field:
+            return "Direct Lake: no calculated columns, falls back to the plain column"
+        if kind == "+":
+            return "translated from the SQL version; the SQL is kept in custom_extensions"
+        if attr.split()[0] in SQL_DIALECTS:
+            return "Power BI keeps the DAX version only"
+    return ""
+
+
+class _Dumper(yaml.SafeDumper):
+    """Multi-line strings as | blocks, so the M query reads like code."""
+
+
+_Dumper.add_representer(str, lambda dumper, value: dumper.represent_scalar(
+    "tag:yaml.org,2002:str", value, style="|" if "\n" in value else None))
+
+
+def model_extension(ossie: str) -> str | None:
+    """The model-level Power BI extension (connection, culture, ...) as readable YAML."""
+    for ext in yaml.safe_load(ossie).get("custom_extensions", []):
+        if ext.get("vendor_name") == "POWER_BI":
+            data = json.loads(ext["data"])
+            for expression in data.get("expressions", []):  # M code is stored one line per item
+                if isinstance(expression.get("expression"), list):
+                    expression["expression"] = "\n".join(expression["expression"])
+            return yaml.dump(data, Dumper=_Dumper, sort_keys=False, width=200)
+    return None
+
+
+def show_changes(a: str, b: str) -> None:
+    """Every change that matters, per object, as -/+ lines with the reason next to it.
+
+    Left out: reordering, re-quoting, and the Power BI details stored in custom_extensions.
+    """
+    before, after = flatten(yaml.safe_load(a)), flatten(yaml.safe_load(b))
+    color = sys.stdout.isatty() or bool(os.environ.get("FORCE_COLOR"))
+    paint = (lambda code, text: f"\033[{code}m{text}\033[0m") if color else (lambda code, text: text)
+    is_ext = lambda key: key[1].startswith("custom_extensions")
+
+    rows: dict[str, list[tuple[str, str, object]]] = {}  # object -> [(-/+, attribute, value)]
+    for key in dict.fromkeys([*before, *after]):  # file order, before first
+        if is_ext(key) or before.get(key) == after.get(key):
+            continue
+        if key in before:
+            rows.setdefault(key[0], []).append(("-", key[1], before[key]))
+        if key in after:
+            rows.setdefault(key[0], []).append(("+", key[1], after[key]))
+
+    objects = {k[0] for k in before} - {"model"}
+    print(f"  {len(objects & {k[0] for k in after})} of {len(objects)} datasets, fields, "
+          f"relationships and metrics came back. What changed:")
+    show = lambda value: value if isinstance(value, str) else json.dumps(value)
+    lines = [(obj, kind, f"{attr}: {show(value)}", reason(obj, attr, kind))
+             for obj, changes in rows.items() for kind, attr, value in changes]
+    width = max((len(t) for _, _, t, _ in lines), default=0)
+    if extension := model_extension(b):
+        print(f"\n  {paint('1', 'model')}")
+        print(f"    {paint('32', '+ custom_extensions POWER_BI:')}  "
+              + paint("2", "Power BI model settings; the lakehouse connection (workspace ID / lakehouse ID) is in DatabaseQuery"))
+        for line in extension.splitlines():
+            print(paint("32", f"        {line}"))
+    last_obj, last_reason = None, None
+    for obj, kind, text, why in lines:
+        if obj != last_obj:
+            print(f"\n  {paint('1', obj)}")
+            last_obj, last_reason = obj, None
+        note = f"  {why}" if why and why != last_reason else ""  # say each reason once per object
+        last_reason = why or last_reason
+        line = f"{kind} {text:<{width}}" if note else f"{kind} {text}"
+        print(f"    {paint('31' if kind == '-' else '32', line)}{paint('2', note)}")
+    ext_objects = sorted({k[0] for k in after if is_ext(k) and before.get(k) != after[k]} - {"model"})
+    print(paint("2", f"\n  Not shown: reordering, re-quoting, and Power BI details kept in "
+                     f"custom_extensions on {len(ext_objects)} more objects. --diff prints the raw diff."))
+
+
 def show_diff(a: str, b: str, a_name: str, b_name: str) -> None:
     if a == b:
         print(f"  identical: {a_name} == {b_name}")
@@ -159,6 +303,9 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--warnings", action="store_true", help="show conversion warnings (hidden by default)"
+    )
+    parser.add_argument(
+        "--diff", action="store_true", help="also print the raw line diff of the two Ossie files"
     )
     args = parser.parse_args()
 
@@ -200,8 +347,11 @@ def main() -> None:
         (OSSIE_BACK_DIR / "orders_customers.yaml").write_text(roundtripped_ossie)
 
     print("\nOssie side: start vs back from Fabric")
-    show_diff(original_ossie, roundtripped_ossie,
-              "ossie/orders_customers.yaml", "ossie_from_fabric/orders_customers.yaml")
+    show_changes(original_ossie, roundtripped_ossie)
+    if args.diff:
+        print()
+        show_diff(original_ossie, roundtripped_ossie,
+                  "ossie/orders_customers.yaml", "ossie_from_fabric/orders_customers.yaml")
 
 
 if __name__ == "__main__":

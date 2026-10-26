@@ -110,6 +110,29 @@ from the `7c03c46` it built before). Verified like the rounds above: every
 export (Snowflake, Microsoft TMSL and TMDL, both Databricks Python paths,
 the dbt manifest and `mf query`) came out byte-identical.
 
+**Fourth round: spec name resolution (2026-10-26).** Bumped to
+`ossie-converters@8111496` (core `apache/ossie@7205e15` via the submodule);
+on its own every export stayed byte-identical. The spec now says how names
+resolve (apache/ossie#486): model-level metrics must qualify every field as
+`dataset.field`, and `primary_key`, `unique_keys` and relationship columns must
+name *declared fields*, not source columns. Changes per copy:
+
+- every copy: `SUM(order_amount)` / `AVG(order_amount)` -> `SUM(orders.order_amount)`
+  / `AVG(orders.order_amount)`;
+- Databricks (Java and Python): the `customers` key is now a field named
+  `customer_key` (expression `customer_id`), used in `primary_key` and
+  `to_columns`, so it doesn't clash with `orders.customer_id` in the Metric
+  View namespace. The join comes out as `on: source.customer_id =
+  customers.customer_key` instead of `using: [customer_id]`;
+- Snowflake: `customers.customer_id` is a field again;
+- DuckDB: back to the flat shape; the `ossie` extension has a v0.3.0 build for
+  DuckDB 1.5.6/2.0.0 that reads it (the 1.5.5 build still doesn't), and DuckDB
+  moved to 1.5.6.
+
+Verified: dbt manifest and Power BI -> Databricks byte-identical, `mf query`
+and the DuckDB query return the same numbers, the other exports differ only
+as described. Not re-deployed to Databricks, Snowflake or Fabric.
+
 ## Databricks: one structural conflict with dbt-core's native loader, otherwise clean
 
 Converting the same model with `ossie-databricks export` reveals two
@@ -470,7 +493,7 @@ scratch, silently reverting the patch. Re-run
 
 ## Microsoft Fabric / Power BI: measures carry over, labels and datatypes don't
 
-`apache-ossie-microsoft` (same `a5bdbbc` pin as every other converter,
+`apache-ossie-microsoft` (same pin as the other converters,
 installed with its `tom` extra) turns `microsoft/ossie/orders_customers.yaml`
 into a TMSL `model.bim`; `microsoft/export_semantic_model.py` wraps it.
 The result is a Direct Lake model: one `DatabaseQuery` expression pointing
@@ -524,7 +547,7 @@ the split-per-table folder, which only TOM's
 it directly through two *private* helpers (`_load_tom`,
 `_assembly_directory`). They aren't public API, so check them after every
 pin bump. TOM is .NET, loaded via pythonnet, and needs its assemblies
-restored first (`converters/microsoft/scripts/restore_tom.py` upstream).
+restored first (`microsoft/scripts/restore_tom.py` in apache/ossie-converters).
 Without them, TMDL fails with `TomUnavailableError`.
 
 **Getting it into Fabric.** TOM's folder output is only the `definition/`

@@ -8,8 +8,9 @@ request to SQL itself, so the model is the only artifact.
     uv run duckdb/query_metrics.py --sql           # print the generated SQL instead
     uv run duckdb/query_metrics.py --db demo.duckdb  # leave a file to open elsewhere
 
-Needs duckdb==1.5.5 exactly: the community extension is built per DuckDB
-version and only v1.5.5 has an `ossie` build (see README.md).
+Needs DuckDB 1.5.6 or newer: the community extension is built per DuckDB
+version, and the 1.5.5 build is an older one that rejects the flat model
+(see README.md).
 """
 
 import argparse
@@ -50,7 +51,7 @@ def main() -> None:
         "--db",
         metavar="PATH",
         help="persist to a database file instead of memory, so any DuckDB "
-        "client can open it (gitignored; needs DuckDB 1.5.5 to LOAD ossie)",
+        "client can open it (gitignored; needs DuckDB 1.5.6+ to LOAD ossie)",
     )
     args = parser.parse_args()
 

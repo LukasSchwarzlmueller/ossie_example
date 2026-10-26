@@ -32,10 +32,10 @@ packages = ["src/common"]
 # still use it. It only depends on pyyaml, so it does not conflict with the
 # newer apache-ossie. databricks/ uses the Java converter instead
 # (databricks/build_converter.sh).
-apache-ossie = { git = "https://github.com/apache/ossie-converters", subdirectory = "ossie/python", rev = "853c52986cd03508fe233fbab8c4213890943095" }
-apache-ossie-dbt = { git = "https://github.com/apache/ossie-converters", subdirectory = "dbt", rev = "853c52986cd03508fe233fbab8c4213890943095" }
-apache-ossie-snowflake = { git = "https://github.com/apache/ossie-converters", subdirectory = "snowflake", rev = "853c52986cd03508fe233fbab8c4213890943095" }
-apache-ossie-microsoft = { git = "https://github.com/apache/ossie-converters", subdirectory = "microsoft", rev = "853c52986cd03508fe233fbab8c4213890943095" }
+apache-ossie = { git = "https://github.com/apache/ossie-converters", subdirectory = "ossie/python", rev = "811149647ef280b652a03efab112fa937372c21d" }
+apache-ossie-dbt = { git = "https://github.com/apache/ossie-converters", subdirectory = "dbt", rev = "811149647ef280b652a03efab112fa937372c21d" }
+apache-ossie-snowflake = { git = "https://github.com/apache/ossie-converters", subdirectory = "snowflake", rev = "811149647ef280b652a03efab112fa937372c21d" }
+apache-ossie-microsoft = { git = "https://github.com/apache/ossie-converters", subdirectory = "microsoft", rev = "811149647ef280b652a03efab112fa937372c21d" }
 apache-ossie-databricks = { git = "https://github.com/apache/ossie", subdirectory = "converters/databricks", rev = "a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
 
 [dependency-groups]

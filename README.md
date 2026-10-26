@@ -17,7 +17,7 @@ fixes it needed.
 | [databricks/](databricks/README.md) | Ossie -> Unity Catalog Metric View | JDK 21+, Maven; a workspace to deploy | clean |
 | [snowflake/](snowflake/README.md) | Ossie -> Snowflake semantic view | an account to deploy | works with one deploy-time fix |
 | [microsoft/](microsoft/README.md) | Ossie -> Power BI / Fabric semantic model (Direct Lake) | .NET and TOM for TMDL; a workspace to deploy | clean |
-| [duckdb/](duckdb/README.md) | queries the Ossie file directly, no conversion | nothing, runs locally | works with a differently shaped model |
+| [duckdb/](duckdb/README.md) | queries the Ossie file directly, no conversion | nothing, runs locally (DuckDB 1.5.6+) | works |
 | [powerbi_databricks/](powerbi_databricks/README.md) | Power BI model -> Ossie -> Metric View | .NET and TOM for TMDL | dimensions and joins only, DAX measures are dropped |
 | [roundtrip_databricks/](roundtrip_databricks/README.md) | Metric View -> Ossie -> Metric View | the Databricks export | content survives |
 | [roundtrip_powerbi/](roundtrip_powerbi/README.md) | Ossie -> Fabric semantic model -> Ossie, through a real workspace | a Fabric workspace, `az` login | tables, relationship and metrics survive; labels, datatypes and SQL dialects are lost |

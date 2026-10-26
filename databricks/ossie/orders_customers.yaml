@@ -5,13 +5,19 @@ datasets:
 - name: customers
   source: __catalog__.__schema__.customers
   primary_key:
-  - customer_id
+  - customer_key
   description: One row per customer
   fields:
+  - name: customer_key
+    expression:
+      dialects:
+      - dialect: OSSIE_SQL_2026
+        expression: customer_id
+    datatype: Integer
   - name: customer_name
     expression:
       dialects:
-        - dialect: ANSI_SQL
+        - dialect: OSSIE_SQL_2026
           expression: "UPPER(customer_name)"
         - dialect: SNOWFLAKE
           expression: "INITCAP(customer_name)"
@@ -22,7 +28,7 @@ datasets:
   - name: customer_segment
     expression:
       dialects:
-      - dialect: ANSI_SQL
+      - dialect: OSSIE_SQL_2026
         expression: customer_segment
     label: Customer Segment
     datatype: String
@@ -39,19 +45,19 @@ datasets:
   - name: order_id
     expression:
       dialects:
-      - dialect: ANSI_SQL
+      - dialect: OSSIE_SQL_2026
         expression: order_id
     datatype: Integer
   - name: customer_id
     expression:
       dialects:
-      - dialect: ANSI_SQL
+      - dialect: OSSIE_SQL_2026
         expression: customer_id
     datatype: Integer
   - name: order_date
     expression:
       dialects:
-      - dialect: ANSI_SQL
+      - dialect: OSSIE_SQL_2026
         expression: order_date
     label: Order Date
     description: The date the order was placed.
@@ -61,7 +67,7 @@ datasets:
   - name: order_amount
     expression:
       dialects:
-      - dialect: ANSI_SQL
+      - dialect: OSSIE_SQL_2026
         expression: order_amount
     label: Order Amount
     datatype: Decimal
@@ -77,13 +83,13 @@ relationships:
   from_columns:
   - customer_id
   to_columns:
-  - customer_id
+  - customer_key
 metrics:
 - name: total_revenue
   expression:
     dialects:
-    - dialect: ANSI_SQL
-      expression: SUM(order_amount)
+    - dialect: OSSIE_SQL_2026
+      expression: SUM(orders.order_amount)
   description: Total revenue across all orders
   datatype: Decimal
   ai_context:
@@ -93,15 +99,15 @@ metrics:
 - name: order_count
   expression:
     dialects:
-    - dialect: ANSI_SQL
+    - dialect: OSSIE_SQL_2026
       expression: COUNT(orders.*)
   description: Number of orders
   datatype: Integer
 - name: avg_order_value
   expression:
     dialects:
-    - dialect: ANSI_SQL
-      expression: AVG(order_amount)
+    - dialect: OSSIE_SQL_2026
+      expression: AVG(orders.order_amount)
   description: Average order value
   datatype: Decimal
   ai_context:
