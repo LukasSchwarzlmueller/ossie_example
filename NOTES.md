@@ -133,6 +133,18 @@ Verified: dbt manifest and Power BI -> Databricks byte-identical, `mf query`
 and the DuckDB query return the same numbers, the other exports differ only
 as described. Not re-deployed to Databricks, Snowflake or Fabric.
 
+**Databricks re-deploy (2026-10-27).** The fourth-round view failed to deploy:
+`UNRESOLVED_COLUMN ... customers.customer_key`. The Java converter put
+relationship column *names* straight into the join's `on`, but since
+apache/ossie#486 those are field names, and a Metric View join runs against
+the source tables. Patched `OssieToMetricView.buildJoin` to map each
+relationship column to its field's expression (a plain column; anything else
+keeps the name with a warning). Both sides now read `customer_id`, so the join
+is `using: [customer_id]` again. The patch lives in `databricks/patches/` and
+`build_converter.sh` applies it; upstream tests still pass. Deployed and
+queried: revenue 340.50 / 40.00 / 610.25 for customers 1 / 2 / 3, as seeded.
+The deprecated Python converter was not checked.
+
 ## Databricks: one structural conflict with dbt-core's native loader, otherwise clean
 
 Converting the same model with `ossie-databricks export` reveals two
