@@ -1,0 +1,172 @@
+{
+  "name": "orders",
+  "compatibilityLevel": 1702,
+  "model": {
+    "tables": [
+      {
+        "name": "orders",
+        "columns": [
+          {
+            "name": "order_id",
+            "sourceColumn": "order_id"
+          },
+          {
+            "name": "customer_id",
+            "sourceColumn": "customer_id"
+          },
+          {
+            "name": "order_date",
+            "sourceColumn": "order_date",
+            "description": "The date the order was placed."
+          },
+          {
+            "name": "order_amount",
+            "sourceColumn": "order_amount",
+            "annotations": [
+              {
+                "name": "OssieAIContext",
+                "value": "{\"synonyms\": [\"amount\", \"order total\", \"order value\"]}"
+              }
+            ]
+          },
+          {
+            "name": "customer_name",
+            "type": "calculated",
+            "expression": "BLANK()",
+            "annotations": [
+              {
+                "name": "OssieExpressionDialect",
+                "value": "OSSIE_SQL_2026"
+              },
+              {
+                "name": "OssieExpression",
+                "value": "LOWER(customers.customer_name)"
+              }
+            ]
+          }
+        ],
+        "partitions": [
+          {
+            "name": "orders",
+            "mode": "directLake",
+            "source": {
+              "type": "entity",
+              "entityName": "orders",
+              "schemaName": "test",
+              "expressionSource": "DatabaseQuery"
+            }
+          }
+        ],
+        "measures": [
+          {
+            "name": "total_revenue",
+            "expression": "SUM('orders'[order_amount])",
+            "description": "Total revenue across all orders",
+            "annotations": [
+              {
+                "name": "OssieExpressionDialect",
+                "value": "OSSIE_SQL_2026"
+              },
+              {
+                "name": "OssieExpression",
+                "value": "SUM(order_amount)"
+              },
+              {
+                "name": "OssieAIContext",
+                "value": "{\"synonyms\": [\"revenue\", \"sales\"]}"
+              }
+            ]
+          },
+          {
+            "name": "order_count",
+            "expression": "BLANK()",
+            "description": "Number of orders",
+            "annotations": [
+              {
+                "name": "OssieExpressionDialect",
+                "value": "OSSIE_SQL_2026"
+              },
+              {
+                "name": "OssieExpression",
+                "value": "COUNT(*)"
+              }
+            ]
+          },
+          {
+            "name": "avg_order_value",
+            "expression": "AVERAGE('orders'[order_amount])",
+            "description": "Average order value",
+            "annotations": [
+              {
+                "name": "OssieExpressionDialect",
+                "value": "OSSIE_SQL_2026"
+              },
+              {
+                "name": "OssieExpression",
+                "value": "AVG(order_amount)"
+              },
+              {
+                "name": "OssieAIContext",
+                "value": "{\"synonyms\": [\"AOV\", \"average order value\", \"average purchase value\"]}"
+              }
+            ]
+          },
+          {
+            "name": "enterprise_revenue",
+            "expression": "BLANK()",
+            "description": "Revenue from Enterprise customers only",
+            "annotations": [
+              {
+                "name": "OssieExpressionDialect",
+                "value": "DATABRICKS"
+              },
+              {
+                "name": "OssieExpression",
+                "value": "SUM(order_amount) FILTER (WHERE customers.customer_segment = 'Enterprise')"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "customers",
+        "columns": [
+          {
+            "name": "customer_key",
+            "sourceColumn": "customer_id"
+          },
+          {
+            "name": "customer_segment",
+            "sourceColumn": "customer_segment"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "customers",
+            "mode": "directLake",
+            "source": {
+              "type": "entity",
+              "entityName": "customers",
+              "schemaName": "test",
+              "expressionSource": "DatabaseQuery"
+            }
+          }
+        ]
+      }
+    ],
+    "expressions": [
+      {
+        "name": "DatabaseQuery",
+        "kind": "m",
+        "expression": [
+          "let",
+          "    Source = AzureStorage.DataLake(\"https://onelake.dfs.fabric.microsoft.com/00000000-0000-0000-0000-000000000000/00000000-0000-0000-0000-000000000000\")",
+          "in",
+          "    Source"
+        ]
+      }
+    ],
+    "description": "Minimal orders/customers demo model for the OSI meetup talk",
+    "culture": "en-US"
+  }
+}
