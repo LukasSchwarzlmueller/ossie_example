@@ -1,0 +1,110 @@
+version: "0.2.0.dev0"
+name: "orders"
+description: "Orders with customers (Databricks -> Ossie -> Power BI trip)"
+datasets:
+- name: "orders"
+  source: "ossie.dbo.orders"
+  fields:
+  - name: "order_id"
+    expression:
+      dialects:
+      - dialect: "OSSIE_SQL_2026"
+        expression: "order_id"
+  - name: "customer_id"
+    expression:
+      dialects:
+      - dialect: "OSSIE_SQL_2026"
+        expression: "customer_id"
+  - name: "order_date"
+    expression:
+      dialects:
+      - dialect: "OSSIE_SQL_2026"
+        expression: "order_date"
+    description: "The date the order was placed."
+    label: "Order Date"
+  - name: "order_amount"
+    expression:
+      dialects:
+      - dialect: "OSSIE_SQL_2026"
+        expression: "order_amount"
+    ai_context:
+      synonyms:
+      - "amount"
+      - "order total"
+      - "order value"
+- name: "customers"
+  source: "ossie.dbo.customers"
+  unique_keys:
+  - - "customer_id"
+  fields:
+  - name: "customer_key"
+    expression:
+      dialects:
+      - dialect: "OSSIE_SQL_2026"
+        expression: "customer_id"
+  - name: "customer_name"
+    expression:
+      dialects:
+      - dialect: "OSSIE_SQL_2026"
+        expression: "customer_name"
+  - name: "customer_segment"
+    expression:
+      dialects:
+      - dialect: "OSSIE_SQL_2026"
+        expression: "customer_segment"
+    description: "enterprise or smb"
+    label: "Customer Segment"
+relationships:
+- name: "orders_to_customers"
+  from: "orders"
+  to: "customers"
+  from_columns:
+  - "customer_id"
+  to_columns:
+  - "customer_id"
+  custom_extensions:
+  - vendor_name: "DATABRICKS"
+    data: "{\"_v\": 1, \"rely\": {\"at_most_one_match\": true}, \"on\": \"source.customer_id\
+      \ = customers.customer_id\"}"
+metrics:
+- name: "total_revenue"
+  expression:
+    dialects:
+    - dialect: "OSSIE_SQL_2026"
+      expression: "SUM(order_amount)"
+  description: "Total revenue across all orders"
+  ai_context:
+    synonyms:
+    - "revenue"
+    - "sales"
+  custom_extensions:
+  - vendor_name: "DATABRICKS"
+    data: "{\"_v\": 1, \"format\": {\"type\": \"currency\", \"currency_code\": \"\
+      EUR\"}, \"display_name\": \"Total Revenue\"}"
+- name: "order_count"
+  expression:
+    dialects:
+    - dialect: "OSSIE_SQL_2026"
+      expression: "COUNT(*)"
+  description: "Number of orders"
+- name: "enterprise_revenue"
+  expression:
+    dialects:
+    - dialect: "DATABRICKS"
+      expression: "SUM(order_amount) FILTER (WHERE customers.customer_segment = 'enterprise')"
+  description: "Revenue from enterprise customers only"
+  custom_extensions:
+  - vendor_name: "DATABRICKS"
+    data: "{\"_v\": 1, \"format\": {\"type\": \"currency\", \"currency_code\": \"\
+      EUR\"}}"
+- name: "revenue_running_total"
+  expression:
+    dialects:
+    - dialect: "DATABRICKS"
+      expression: "SUM(order_amount)"
+  description: "Cumulative revenue up to each order date"
+  custom_extensions:
+  - vendor_name: "DATABRICKS"
+    data: "{\"_v\": 1, \"format\": {\"type\": \"currency\", \"currency_code\": \"\
+      EUR\"}, \"window\": [{\"order\": \"order_date\", \"range\": \"cumulative\",\
+      \ \"semiadditive\": \"last\"}]}"

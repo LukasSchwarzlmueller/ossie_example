@@ -1,0 +1,142 @@
+{
+  "name": "ossie_databricks_trip",
+  "compatibilityLevel": 1702,
+  "model": {
+    "tables": [
+      {
+        "name": "orders",
+        "columns": [
+          {
+            "name": "order_id",
+            "sourceColumn": "order_id"
+          },
+          {
+            "name": "customer_id",
+            "sourceColumn": "customer_id"
+          },
+          {
+            "name": "order_date",
+            "sourceColumn": "order_date",
+            "description": "The date the order was placed."
+          },
+          {
+            "name": "order_amount",
+            "sourceColumn": "order_amount",
+            "annotations": [
+              {
+                "name": "OssieAIContext",
+                "value": "{\"synonyms\": [\"amount\", \"order total\", \"order value\"]}"
+              }
+            ]
+          }
+        ],
+        "partitions": [
+          {
+            "name": "orders",
+            "mode": "directLake",
+            "source": {
+              "type": "entity",
+              "entityName": "orders",
+              "schemaName": "dbo",
+              "expressionSource": "DatabaseQuery"
+            }
+          }
+        ],
+        "measures": [
+          {
+            "name": "total_revenue",
+            "expression": "SUM('orders'[order_amount])",
+            "description": "Total revenue across all orders",
+            "formatString": "\u20ac#,0.00",
+            "annotations": [
+              {
+                "name": "OssieExpressionDialect",
+                "value": "OSSIE_SQL_2026"
+              },
+              {
+                "name": "OssieExpression",
+                "value": "SUM(order_amount)"
+              },
+              {
+                "name": "OssieAIContext",
+                "value": "{\"synonyms\": [\"revenue\", \"sales\"]}"
+              }
+            ]
+          },
+          {
+            "name": "order_count",
+            "expression": "COUNTROWS('orders')",
+            "description": "Number of orders"
+          },
+          {
+            "name": "enterprise_revenue",
+            "expression": "CALCULATE([total_revenue], 'customers'[customer_segment] = \"enterprise\")",
+            "description": "Revenue from enterprise customers only",
+            "formatString": "\u20ac#,0.00"
+          },
+          {
+            "name": "revenue_running_total",
+            "expression": "CALCULATE([total_revenue], FILTER(ALL('orders'[order_date]), 'orders'[order_date] <= MAX('orders'[order_date])))",
+            "description": "Cumulative revenue up to each order date",
+            "formatString": "\u20ac#,0.00"
+          }
+        ]
+      },
+      {
+        "name": "customers",
+        "columns": [
+          {
+            "name": "customer_key",
+            "sourceColumn": "customer_id",
+            "isUnique": true
+          },
+          {
+            "name": "customer_name",
+            "sourceColumn": "customer_name"
+          },
+          {
+            "name": "customer_segment",
+            "sourceColumn": "customer_segment",
+            "description": "enterprise or smb"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "customers",
+            "mode": "directLake",
+            "source": {
+              "type": "entity",
+              "entityName": "customers",
+              "schemaName": "dbo",
+              "expressionSource": "DatabaseQuery"
+            }
+          }
+        ]
+      }
+    ],
+    "expressions": [
+      {
+        "name": "DatabaseQuery",
+        "kind": "m",
+        "expression": [
+          "let",
+          "    Source = AzureStorage.DataLake(\"https://onelake.dfs.fabric.microsoft.com/00000000-0000-0000-0000-000000000000/00000000-0000-0000-0000-000000000000\")",
+          "in",
+          "    Source"
+        ]
+      }
+    ],
+    "description": "Orders with customers (Databricks -> Ossie -> Power BI trip)",
+    "relationships": [
+      {
+        "name": "orders_to_customers",
+        "fromTable": "orders",
+        "fromColumn": "customer_id",
+        "toTable": "customers",
+        "toColumn": "customer_key"
+      }
+    ],
+    "culture": "en-US",
+    "defaultPowerBIDataSourceVersion": "powerBI_V3"
+  }
+}

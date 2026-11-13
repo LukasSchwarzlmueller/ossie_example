@@ -1,0 +1,57 @@
+version: "1.1"
+source: "ossi.test.orders"
+comment: "Orders with customers (Databricks -> Ossie -> Power BI trip)"
+joins:
+- name: "customers"
+  source: "ossi.test.customers"
+  "on": "source.customer_id = customers.customer_id"
+  rely:
+    at_most_one_match: true
+dimensions:
+- name: "order_id"
+  expr: "order_id"
+- name: "customer_id"
+  expr: "customer_id"
+- name: "order_date"
+  expr: "order_date"
+  comment: "The date the order was placed."
+  display_name: "Order Date"
+- name: "order_amount"
+  expr: "order_amount"
+  synonyms: ["amount", "order total", "order value"]
+- name: "customer_key"
+  expr: "customers.customer_id"
+- name: "customer_name"
+  expr: "customers.customer_name"
+- name: "customer_segment"
+  expr: "customers.customer_segment"
+  comment: "enterprise or smb"
+  display_name: "Customer Segment"
+measures:
+- name: "total_revenue"
+  expr: "SUM(order_amount)"
+  comment: "Total revenue across all orders"
+  display_name: "Total Revenue"
+  synonyms: ["revenue", "sales"]
+  format:
+    type: currency
+    currency_code: EUR
+- name: "order_count"
+  expr: "COUNT(*)"
+  comment: "Number of orders"
+- name: "enterprise_revenue"
+  expr: "SUM(order_amount) FILTER (WHERE customers.customer_segment = 'enterprise')"
+  comment: "Revenue from enterprise customers only"
+  format:
+    type: currency
+    currency_code: EUR
+- name: "revenue_running_total"
+  expr: "SUM(order_amount)"
+  comment: "Cumulative revenue up to each order date"
+  window:
+  - order: "order_date"
+    range: "cumulative"
+    semiadditive: "last"
+  format:
+    type: currency
+    currency_code: EUR

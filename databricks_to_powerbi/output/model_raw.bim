@@ -1,0 +1,158 @@
+{
+  "name": "ossie_databricks_trip",
+  "compatibilityLevel": 1702,
+  "model": {
+    "tables": [
+      {
+        "name": "orders",
+        "columns": [
+          {
+            "name": "order_id",
+            "sourceColumn": "order_id"
+          },
+          {
+            "name": "customer_id",
+            "sourceColumn": "customer_id"
+          },
+          {
+            "name": "order_date",
+            "sourceColumn": "order_date",
+            "description": "The date the order was placed."
+          },
+          {
+            "name": "order_amount",
+            "sourceColumn": "order_amount",
+            "annotations": [
+              {
+                "name": "OssieAIContext",
+                "value": "{\"synonyms\": [\"amount\", \"order total\", \"order value\"]}"
+              }
+            ]
+          }
+        ],
+        "partitions": [
+          {
+            "name": "orders",
+            "mode": "directLake",
+            "source": {
+              "type": "entity",
+              "entityName": "orders",
+              "schemaName": "dbo",
+              "expressionSource": "DatabaseQuery"
+            }
+          }
+        ],
+        "measures": [
+          {
+            "name": "total_revenue",
+            "expression": "SUM('orders'[order_amount])",
+            "description": "Total revenue across all orders",
+            "annotations": [
+              {
+                "name": "OssieExpressionDialect",
+                "value": "OSSIE_SQL_2026"
+              },
+              {
+                "name": "OssieExpression",
+                "value": "SUM(order_amount)"
+              },
+              {
+                "name": "OssieAIContext",
+                "value": "{\"synonyms\": [\"revenue\", \"sales\"]}"
+              }
+            ]
+          },
+          {
+            "name": "order_count",
+            "expression": "BLANK()",
+            "description": "Number of orders",
+            "annotations": [
+              {
+                "name": "OssieExpressionDialect",
+                "value": "OSSIE_SQL_2026"
+              },
+              {
+                "name": "OssieExpression",
+                "value": "COUNT(*)"
+              }
+            ]
+          },
+          {
+            "name": "enterprise_revenue",
+            "expression": "BLANK()",
+            "description": "Revenue from enterprise customers only",
+            "annotations": [
+              {
+                "name": "OssieExpressionDialect",
+                "value": "DATABRICKS"
+              },
+              {
+                "name": "OssieExpression",
+                "value": "SUM(order_amount) FILTER (WHERE customers.customer_segment = 'enterprise')"
+              }
+            ]
+          },
+          {
+            "name": "revenue_running_total",
+            "expression": "SUM('orders'[order_amount])",
+            "description": "Cumulative revenue up to each order date",
+            "annotations": [
+              {
+                "name": "OssieExpressionDialect",
+                "value": "DATABRICKS"
+              },
+              {
+                "name": "OssieExpression",
+                "value": "SUM(order_amount)"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "customers",
+        "columns": [
+          {
+            "name": "customer_key",
+            "sourceColumn": "customer_id"
+          },
+          {
+            "name": "customer_name",
+            "sourceColumn": "customer_name"
+          },
+          {
+            "name": "customer_segment",
+            "sourceColumn": "customer_segment",
+            "description": "enterprise or smb"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "customers",
+            "mode": "directLake",
+            "source": {
+              "type": "entity",
+              "entityName": "customers",
+              "schemaName": "dbo",
+              "expressionSource": "DatabaseQuery"
+            }
+          }
+        ]
+      }
+    ],
+    "expressions": [
+      {
+        "name": "DatabaseQuery",
+        "kind": "m",
+        "expression": [
+          "let",
+          "    Source = AzureStorage.DataLake(\"https://onelake.dfs.fabric.microsoft.com/00000000-0000-0000-0000-000000000000/00000000-0000-0000-0000-000000000000\")",
+          "in",
+          "    Source"
+        ]
+      }
+    ],
+    "description": "Orders with customers (Databricks -> Ossie -> Power BI trip)",
+    "culture": "en-US"
+  }
+}

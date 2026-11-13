@@ -1,0 +1,11 @@
+# DAX for the measures the converter can't translate from SQL.
+#
+# An Ossie metric can carry one expression per dialect: Databricks keeps reading the SQL,
+# Power BI picks the DAX. run_trip.py adds these as a DAX dialect next to the SQL, so the
+# business logic is written once per engine, in one file, instead of being rebuilt in Power BI.
+metrics:
+  order_count: COUNTROWS('orders')
+  enterprise_revenue: CALCULATE([total_revenue], 'customers'[customer_segment] = "enterprise")
+  revenue_running_total: >-
+    CALCULATE([total_revenue], FILTER(ALL('orders'[order_date]),
+    'orders'[order_date] <= MAX('orders'[order_date])))
