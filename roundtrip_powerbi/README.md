@@ -11,7 +11,7 @@ Ossie -> Fabric semantic model -> Ossie, through a real Fabric workspace.
 3. Log in from a **Windows** PowerShell window. On WSL, the Linux `az` is blocked
    by Conditional Access (error 530033):
    ```powershell
-   az login --tenant <tenant> --allow-no-subscriptions
+   az login --tenant <FABRIC_TENANT> --allow-no-subscriptions   # FABRIC_TENANT from .env
    ```
 4. Do a dry run and keep `powerbi/` and `ossie_from_fabric/` as a fallback.
 

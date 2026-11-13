@@ -7,27 +7,16 @@
         "name": "orders",
         "columns": [
           {
-            "name": "order_id",
-            "sourceColumn": "order_id"
-          },
-          {
             "name": "customer_id",
             "sourceColumn": "customer_id"
           },
           {
             "name": "order_date",
-            "sourceColumn": "order_date",
-            "description": "The date the order was placed."
+            "sourceColumn": "order_date"
           },
           {
             "name": "order_amount",
-            "sourceColumn": "order_amount",
-            "annotations": [
-              {
-                "name": "OssieAIContext",
-                "value": "{\"synonyms\": [\"amount\", \"order total\", \"order value\"]}"
-              }
-            ]
+            "sourceColumn": "order_amount"
           }
         ],
         "partitions": [
@@ -59,21 +48,6 @@
               {
                 "name": "OssieAIContext",
                 "value": "{\"synonyms\": [\"revenue\", \"sales\"]}"
-              }
-            ]
-          },
-          {
-            "name": "order_count",
-            "expression": "BLANK()",
-            "description": "Number of orders",
-            "annotations": [
-              {
-                "name": "OssieExpressionDialect",
-                "value": "OSSIE_SQL_2026"
-              },
-              {
-                "name": "OssieExpression",
-                "value": "COUNT(*)"
               }
             ]
           },
@@ -117,10 +91,6 @@
             "sourceColumn": "customer_id"
           },
           {
-            "name": "customer_name",
-            "sourceColumn": "customer_name"
-          },
-          {
             "name": "customer_segment",
             "sourceColumn": "customer_segment",
             "description": "enterprise or smb"
@@ -146,7 +116,7 @@
         "kind": "m",
         "expression": [
           "let",
-          "    Source = AzureStorage.DataLake(\"https://onelake.dfs.fabric.microsoft.com/00000000-0000-0000-0000-000000000000/00000000-0000-0000-0000-000000000000\")",
+          "    Source = AzureStorage.DataLake(\"https://onelake.dfs.fabric.microsoft.com/8dff2281-156c-4f24-b774-f627050f949f/c62844a7-18c6-492d-9b63-88a5d3be5435\")",
           "in",
           "    Source"
         ]

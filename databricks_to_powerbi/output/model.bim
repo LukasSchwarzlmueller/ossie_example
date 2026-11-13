@@ -7,27 +7,20 @@
         "name": "orders",
         "columns": [
           {
-            "name": "order_id",
-            "sourceColumn": "order_id"
-          },
-          {
             "name": "customer_id",
-            "sourceColumn": "customer_id"
+            "sourceColumn": "customer_id",
+            "dataType": "int64"
           },
           {
             "name": "order_date",
             "sourceColumn": "order_date",
-            "description": "The date the order was placed."
+            "dataType": "dateTime",
+            "formatString": "yyyy-mm-dd"
           },
           {
             "name": "order_amount",
             "sourceColumn": "order_amount",
-            "annotations": [
-              {
-                "name": "OssieAIContext",
-                "value": "{\"synonyms\": [\"amount\", \"order total\", \"order value\"]}"
-              }
-            ]
+            "dataType": "decimal"
           }
         ],
         "partitions": [
@@ -64,21 +57,14 @@
             ]
           },
           {
-            "name": "order_count",
-            "expression": "COUNTROWS('orders')",
-            "description": "Number of orders"
-          },
-          {
             "name": "enterprise_revenue",
-            "expression": "CALCULATE([total_revenue], 'customers'[customer_segment] = \"enterprise\")",
-            "description": "Revenue from enterprise customers only",
-            "formatString": "\u20ac#,0.00"
+            "expression": "CALCULATE([total_revenue], KEEPFILTERS('customers'[customer_segment] = \"enterprise\"))",
+            "description": "Revenue from enterprise customers only"
           },
           {
             "name": "revenue_running_total",
             "expression": "CALCULATE([total_revenue], FILTER(ALL('orders'[order_date]), 'orders'[order_date] <= MAX('orders'[order_date])))",
-            "description": "Cumulative revenue up to each order date",
-            "formatString": "\u20ac#,0.00"
+            "description": "Cumulative revenue up to each order date"
           }
         ]
       },
@@ -88,15 +74,13 @@
           {
             "name": "customer_key",
             "sourceColumn": "customer_id",
+            "dataType": "int64",
             "isUnique": true
-          },
-          {
-            "name": "customer_name",
-            "sourceColumn": "customer_name"
           },
           {
             "name": "customer_segment",
             "sourceColumn": "customer_segment",
+            "dataType": "string",
             "description": "enterprise or smb"
           }
         ],
@@ -120,7 +104,7 @@
         "kind": "m",
         "expression": [
           "let",
-          "    Source = AzureStorage.DataLake(\"https://onelake.dfs.fabric.microsoft.com/00000000-0000-0000-0000-000000000000/00000000-0000-0000-0000-000000000000\")",
+          "    Source = AzureStorage.DataLake(\"https://onelake.dfs.fabric.microsoft.com/8dff2281-156c-4f24-b774-f627050f949f/c62844a7-18c6-492d-9b63-88a5d3be5435\")",
           "in",
           "    Source"
         ]

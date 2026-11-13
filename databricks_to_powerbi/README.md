@@ -6,7 +6,7 @@ what arrives as is (green), what is lost (red) or wrong (yellow), and what a fix
 
 | File | What it does |
 |---|---|
-| `metric_view.yaml` | the Metric View: a join, synonyms, and four measures: SUM, COUNT(*), filtered, window. `__catalog__.__schema__` comes from `.env` |
+| `metric_view.yaml` | the Metric View: a join, synonyms, and three measures: SUM, filtered, window. `__catalog__.__schema__` comes from `.env` |
 | `fixes.yaml` | DAX for the measures that don't translate from SQL |
 | `setup_databricks.py` | creates `customers` / `orders` and the Metric View in Databricks, then queries every measure once |
 | `run_trip.py` | Metric View -> Ossie -> fixes -> Power BI (-> Fabric) and the summary |
@@ -25,14 +25,25 @@ uv run databricks_to_powerbi/run_trip.py --dry-run          # offline: no Databr
 - A real run reads the Metric View back from Databricks (`SHOW CREATE TABLE`), so it converts
   what Unity Catalog actually stores. `--dry-run` reads the local `metric_view.yaml` instead and
   writes `output/model_fabric.bim` (the model as it would be uploaded) without sending it.
-- The Fabric upload needs `FABRIC_WORKSPACE_ID` / `FABRIC_LAKEHOUSE_ID` in `.env` and an `az login`
-  (on WSL from Windows PowerShell, see `roundtrip_powerbi/README.md`). The lakehouse needs
-  `dbo.customers` and `dbo.orders`. The fixed model is uploaded (`--raw` for the unfixed one).
+- The Fabric upload needs `FABRIC_WORKSPACE_ID` / `FABRIC_LAKEHOUSE_ID` in `.env`. The lakehouse
+  needs `dbo.customers` and `dbo.orders` (the same `ossie` lakehouse as `roundtrip_powerbi/`).
+  The fixed model is uploaded (`--raw` for the unfixed one).
+- Log in from a **Windows** PowerShell window. On WSL, the Linux `az` is blocked by Conditional
+  Access (error 530033):
+  ```powershell
+  az login --tenant <FABRIC_TENANT> --allow-no-subscriptions   # FABRIC_TENANT from .env
+  az account show --query user.name -o tsv   # must be the account with access to the workspace
+  ```
+  `run_trip.py` asks `az` for a fresh token on every run (same `get_token()` as
+  `roundtrip_powerbi/`), so one login on the day of the talk is enough. If the run says
+  `does not exist in MSAL token cache`, log in again. `FABRIC_TOKEN` in `.env` skips `az`, but a
+  pasted token only lasts about 60-90 minutes.
+- Run `--dry-run` last: a real run clears `output/` and only the dry run writes `model_fabric.bim`.
 - Keep `output/` and screenshots of Databricks and Fabric as a fallback.
 
 ## Demo (~3 min)
 
-1. **Databricks:** the Metric View in Catalog Explorer: the join and the four measures.
+1. **Databricks:** the Metric View in Catalog Explorer: the join and the three measures.
 2. **Run:** `uv run databricks_to_powerbi/run_trip.py --step` (`--dry-run` as the offline fallback).
    `--step` waits for Enter before each summary line, so every line gets its sentence.
    The summary is in plain words (simple sum / count rows / business logic / time logic ->
@@ -52,19 +63,28 @@ maps the Databricks `format` to a Power BI `formatString`.
 
 As is (`model_raw.bim`):
 - `total_revenue` (`SUM`) arrives as DAX.
-- `order_count` (`COUNT(*)`) and `enterprise_revenue` (`FILTER`) become `BLANK()`.
+- `enterprise_revenue` (`FILTER`) becomes `BLANK()`.
 - `revenue_running_total` (window measure) arrives as a plain `SUM`: a wrong number, and the only
   warning is that the DATABRICKS custom_extensions were dropped.
 - Relationship skipped: the Metric View has one namespace, so the customers key is named
   `customer_key`; the import keeps that name on the field but writes the physical column
   `customer_id` into the relationship, so Power BI finds no `customers[customer_id]`.
+- No column types: a Metric View has none, so the Ossie fields have no `datatype` and the columns
+  no `dataType`. Fabric refuses such a Direct Lake model (`RequiredOptionsMissing` /
+  `allowPurgeData`), so the raw model (`--raw`) can't be uploaded.
 - The converter exits 0 either way.
 
 Fixed (`model.bim`), all in the Ossie file between the two converters, converters unchanged:
-- DAX from `fixes.yaml` as a second dialect (the intended Ossie way): the three measures work in
+- DAX from `fixes.yaml` as a second dialect (the intended Ossie way): the two measures work in
   Power BI, Databricks keeps reading the SQL
 - relationship and unique key point at the field (`customer_key`): a workaround for the importer
+- column types from `fixes.yaml` (`datatypes`) as Ossie `datatype` on each field
+- `enterprise_revenue` uses `KEEPFILTERS`: a plain `CALCULATE` filter replaces the segment
+  filter, so `smb` would show the enterprise total instead of empty (Databricks: `NULL`)
+
+After the upload, `run_trip.py` refreshes the model (Direct Lake framing); before that, queries
+fail with "Cannot find table".
 
 Reuses `Fabric`, `get_token` and `fabric_glue` from `roundtrip_powerbi/run_fabric_roundtrip.py`.
-Not yet tested against a live workspace: the Metric View (window measure) in Databricks,
-and the upload to Fabric.
+Tested live (2026-11-13): Metric View in Databricks, upload + refresh in Fabric; the three
+measures return the same numbers in Fabric as in Databricks.

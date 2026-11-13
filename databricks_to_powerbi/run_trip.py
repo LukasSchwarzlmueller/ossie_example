@@ -5,7 +5,8 @@
   2. "mirroring": dataset sources Unity Catalog -> OneLake lakehouse (only the names change)
   3. fixes in Ossie -> output/ossie_fixed.yaml       see FIXES below
   4. both Ossie files -> Power BI                    output/model_raw.bim, output/model.bim
-  5. Fabric glue + upload of model.bim to Fabric (code from roundtrip_powerbi/)
+  5. Fabric glue + upload of model.bim to Fabric (code from roundtrip_powerbi/), then a refresh
+     so the Direct Lake model has data
 
 --dry-run needs no account: step 0 reads the local metric_view.yaml instead, step 5 writes
 output/model_fabric.bim (what would be uploaded) and sends nothing.
@@ -18,6 +19,7 @@ FIXES - everything happens in the Ossie file, the converters stay as they are:
     relationship, but the field is named customer_key -> point the relationship at the field
   - DAX from fixes.yaml as a second dialect for measures that don't translate from SQL
   - Databricks `format` (kept in custom_extensions) -> Power BI formatString
+  - column types from fixes.yaml: a Metric View has none, and Fabric refuses the model without
 
     uv run databricks_to_powerbi/run_trip.py               # real: from Databricks, into Fabric
     uv run databricks_to_powerbi/run_trip.py --no-upload   # real Databricks, stop before Fabric
@@ -56,6 +58,7 @@ JAR_DIRS = [  # where the converter jar has lived over time
     REPO_ROOT / ".ossie-converters" / "databricks" / "java" / "target",
 ]
 CURRENCY = {"EUR": "€", "USD": "$", "GBP": "£", "CHF": "CHF "}
+POWERBI = "https://analysis.windows.net/powerbi/api"
 
 
 def load_roundtrip():
@@ -86,6 +89,27 @@ def pull_metric_view(qualified_view: str) -> str:
     if not found:
         raise SystemExit(f"No YAML body found in the definition of {qualified_view}:\n{ddl}")
     return textwrap.dedent(found.group(1)).strip() + "\n"
+
+
+def refresh(token: str, workspace_id: str, model_id: str) -> str:
+    """Refresh (frame) the Direct Lake model: until then its tables have no data in Fabric."""
+    import time
+    import urllib.error
+    import urllib.request
+
+    url = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/datasets/{model_id}/refreshes"
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    try:
+        urllib.request.urlopen(urllib.request.Request(url, data=b'{"type": "full"}', headers=headers, method="POST"))
+        for _ in range(60):
+            time.sleep(3)
+            latest = json.load(urllib.request.urlopen(urllib.request.Request(f"{url}?$top=1", headers=headers)))
+            status = latest["value"][0]["status"]
+            if status != "Unknown":  # Unknown = still running
+                return status if status == "Completed" else f"{status}: {latest['value'][0].get('serviceExceptionJson', '')}"
+        return "still running after 3 min"
+    except urllib.error.HTTPError as e:
+        return f"failed ({e.code}): {e.read().decode()[:300]}"
 
 
 def find_jar() -> str:
@@ -137,7 +161,7 @@ def format_string(spec: dict) -> str | None:
 
 # --- fixes (all in the Ossie file) -----------------------------------------------------------
 
-def apply_fixes(ossie: dict, dax: dict[str, str]) -> dict[str, str]:
+def apply_fixes(ossie: dict, dax: dict[str, str], types: dict[str, str]) -> dict[str, str]:
     """Fix the Ossie model in place; returns {object: what was fixed} for the summary."""
     notes: dict[str, str] = {}
     datasets = {d["name"]: d for d in ossie["datasets"]}
@@ -173,6 +197,14 @@ def apply_fixes(ossie: dict, dax: dict[str, str]) -> dict[str, str]:
             formats += 1
     if formats:
         notes["formats"] = f"Databricks format -> Power BI formatString ({formats}x)"
+
+    typed = 0
+    for field in [f for d in ossie["datasets"] for f in d.get("fields", [])]:
+        if not field.get("datatype") and field["name"] in types:
+            field["datatype"] = types[field["name"]]
+            typed += 1
+    if typed:
+        notes["types"] = f"datatype set in Ossie ({typed}x)"
     return notes
 
 
@@ -233,6 +265,9 @@ class Result:
 
     def described(self) -> int:
         return sum(1 for o in [*self.measures.values(), *self.columns.values()] if o.get("description"))
+
+    def typed(self) -> int:
+        return sum(1 for c in self.columns.values() if c.get("dataType"))
 
     def formats(self) -> int:
         return sum(1 for m in self.measures.values() if m.get("formatString")) + \
@@ -380,6 +415,10 @@ def plain_summary(view: dict, raw: "Result", fix: "Result", raw_ossie: dict, sho
     plain("ok" if arrived == len(columns) else "lost", f"columns ({len(columns)})", "",
           "arrive" if arrived == len(columns) else f"{arrived} arrive",
           f"{len(raw_ossie['datasets'])} tables, read from OneLake")
+    typed = raw.typed()
+    plain("ok" if typed >= len(columns) else "lost", f"column types ({len(columns)})", "",
+          "arrive" if typed >= len(columns) else "lost: Fabric refuses the model",
+          "" if typed >= len(columns) else "a Metric View has no column types, so Ossie gets none either")
     for rel in rels:
         state = raw.relationship(rel)[0]
         plain(state, f"{rel['from']} -> {rel['to']}", "",
@@ -394,7 +433,7 @@ def plain_summary(view: dict, raw: "Result", fix: "Result", raw_ossie: dict, sho
     if not show_fix:
         return
     pause()
-    print(paint("1", "\n  Can Ossie fix it?") + paint("2", "  same steps, with three changes in the Ossie file"))
+    print(paint("1", "\n  Can Ossie fix it?") + paint("2", "  same steps, with four changes in the Ossie file"))
     fixed_ok = sum(1 for m in measures if fix.measure(m["name"])[0] == "ok")
     with_dax = [m["name"] for m in measures if raw.measure(m["name"])[0] != "ok"]
     plain("ok" if fixed_ok == len(measures) else "lost", f"{fixed_ok} of {len(measures)} measures", "",
@@ -404,6 +443,10 @@ def plain_summary(view: dict, raw: "Result", fix: "Result", raw_ossie: dict, sho
             state = fix.relationship(rel)[0]
             plain(state, f"{rel['from']} -> {rel['to']}", "", "connected" if state == "ok" else "still lost",
                   "the relationship now names the field, not the physical column")
+    if raw.typed() < len(columns):
+        state = "ok" if fix.typed() >= len(columns) else "lost"
+        plain(state, f"column types ({len(columns)})", "", "arrive" if state == "ok" else "still lost",
+              "datatype written into the Ossie file")
     if wanted_fmt := sum(1 for i in items if i.get("format")):
         state = "ok" if fix.formats() >= wanted_fmt else "lost"
         plain(state, f"formats ({wanted_fmt})", "", "arrive" if state == "ok" else "still lost",
@@ -477,7 +520,8 @@ def main() -> None:
     fixed_ossie = copy.deepcopy(raw_ossie)
     notes = {}
     if not args.raw:
-        notes = apply_fixes(fixed_ossie, yaml.safe_load((HERE / "fixes.yaml").read_text())["metrics"])
+        fixes = yaml.safe_load((HERE / "fixes.yaml").read_text())
+        notes = apply_fixes(fixed_ossie, fixes["metrics"], fixes.get("datatypes", {}))
         (OUT / "ossie_fixed.yaml").write_text(yaml.safe_dump(fixed_ossie, sort_keys=False, allow_unicode=True))
 
     # 4. Ossie -> Power BI, as is and fixed
@@ -507,6 +551,7 @@ def main() -> None:
         fabric = roundtrip.Fabric(roundtrip.get_token(), workspace_id)
         model_id, action = fabric.upload(bim, os.environ.get("FABRIC_FOLDER_ID"))
         print(f"     {action} '{bim['name']}': https://app.powerbi.com/groups/{workspace_id}/datasets/{model_id}")
+        print(f"     refresh (Direct Lake framing): {refresh(roundtrip.get_token(POWERBI), workspace_id, model_id)}")
 
     if args.warnings:
         print()
@@ -543,6 +588,10 @@ def main() -> None:
                 line(state, name, f"{clip(dialects(field)[0]['expression'])}  ->  BLANK()", why)
     if arrived:
         line("ok", f"{len(arrived)} columns", paint("2", ", ".join(c.split(".", 1)[1] for c in arrived)))
+    if raw.typed() < len(raw.columns):
+        line("lost", f"{len(raw.columns) - raw.typed()} column types", "missing", "a Metric View has no column types")
+        if not args.raw and fix.typed() >= len(fix.columns):
+            fixed(f"{fix.typed()} dataTypes", notes.get("types", ""))
     labels = sum(1 for m in raw_messages if "display label" in m)
     if labels:
         line("lost", f"{labels} labels", "dropped", "Power BI has no separate display label")

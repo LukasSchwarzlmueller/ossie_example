@@ -37,7 +37,6 @@ SELECT * FROM (VALUES
 VIEW = "CREATE OR REPLACE VIEW {q}.{view} WITH METRICS LANGUAGE YAML AS $$\n{yaml}\n$$"
 CHECK = """SELECT customer_segment,
        MEASURE(total_revenue)      AS total_revenue,
-       MEASURE(order_count)        AS order_count,
        MEASURE(enterprise_revenue) AS enterprise_revenue
 FROM {q}.{view}
 GROUP BY customer_segment

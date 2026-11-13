@@ -58,10 +58,13 @@ WINDOWS_AZ = r"C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin\az.cmd"
 PBISM = {"version": "4.2", "settings": {}}
 
 
-def get_token() -> str:
-    if token := os.environ.get("FABRIC_TOKEN"):
+def get_token(resource: str = RESOURCE) -> str:
+    if resource == RESOURCE and (token := os.environ.get("FABRIC_TOKEN")):
         return token
-    az_args = f"account get-access-token --resource {RESOURCE} --query accessToken -o tsv"
+    tenant = os.environ.get("FABRIC_TENANT")  # e.g. contoso.onmicrosoft.com, or the tenant id
+    az_args = f"account get-access-token --resource {resource} --query accessToken -o tsv"
+    if tenant:
+        az_args += f" --tenant {tenant}"
     attempts = [
         ["az", *az_args.split()],
         ["powershell.exe", "-NoProfile", "-Command", f"cd C:\\; & '{WINDOWS_AZ}' {az_args}"],
@@ -74,7 +77,8 @@ def get_token() -> str:
         token = result.stdout.strip()
         if result.returncode == 0 and token.startswith("ey"):
             return token
-    raise SystemExit("No Fabric token: set FABRIC_TOKEN or run `az login` (on WSL: in Windows PowerShell)")
+    login = f"az login --tenant {tenant} --allow-no-subscriptions" if tenant else "az login"
+    raise SystemExit(f"No Fabric token: set FABRIC_TOKEN or run `{login}` (on WSL: in Windows PowerShell)")
 
 
 class Fabric:

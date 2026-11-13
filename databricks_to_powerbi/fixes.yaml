@@ -4,8 +4,18 @@
 # Power BI picks the DAX. run_trip.py adds these as a DAX dialect next to the SQL, so the
 # business logic is written once per engine, in one file, instead of being rebuilt in Power BI.
 metrics:
-  order_count: COUNTROWS('orders')
-  enterprise_revenue: CALCULATE([total_revenue], 'customers'[customer_segment] = "enterprise")
+  # KEEPFILTERS: like SQL's FILTER (WHERE ...), it narrows the current filter instead of replacing
+  # it, so per segment smb stays empty (Databricks: NULL) instead of showing the enterprise total.
+  enterprise_revenue: CALCULATE([total_revenue], KEEPFILTERS('customers'[customer_segment] = "enterprise"))
   revenue_running_total: >-
     CALCULATE([total_revenue], FILTER(ALL('orders'[order_date]),
     'orders'[order_date] <= MAX('orders'[order_date])))
+
+# Column types (Apache Ossie datatype) for the Metric View dimensions. A Metric View has no
+# column types, so the import writes none, and Fabric refuses a Direct Lake model without them.
+datatypes:
+  customer_id: Integer
+  order_date: Date
+  order_amount: Decimal
+  customer_key: Integer
+  customer_segment: String
