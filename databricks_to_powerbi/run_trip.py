@@ -329,20 +329,20 @@ def kind(measure: dict) -> str:
 OUTCOME = {
     "ok": "arrives",
     "lost": "arrives empty",
-    "wrong": "arrives as a plain sum: wrong, no warning",
+    "wrong": "wrong number, no warning",
 }
 
 
 def plain(state: str, name: str, what: str, outcome: str, explain: str = "") -> None:
     pause()
     code, mark = MARK[state]
-    print(f"    {paint(code, f'{mark} {name:<24}')}{what:<18}{paint(code, outcome) if state != 'ok' else outcome}")
+    print(f"    {paint(code, f'{mark} {name:<24}')}{what:<17}{paint(code, outcome) if state != 'ok' else outcome}")
     if explain:
         print(paint("2", f"      {explain}"))
 
 
 def explain_measure(m: dict, state: str, dax: str) -> str:
-    """One plain sentence on what happened to this measure."""
+    """One short line on what happened to this measure."""
     sql = " ".join(m["expr"].split())
     if state == "ok":
         return f"{sql}  ->  {dax}"
@@ -350,110 +350,83 @@ def explain_measure(m: dict, state: str, dax: str) -> str:
     if state == "wrong":
         windows = m.get("window") or []
         order = windows[0].get("order") if windows else "?"
-        return f"the window (cumulative by {order}) is dropped, only {sql} is left"
+        return f"the window (cumulative by {order}) is dropped, a plain {sql} is left"
     if what == "count rows":
-        return "COUNT(*) names no column, so the converter can't tell which table to count -> BLANK()"
+        return "COUNT(*) names no table to count -> BLANK()"
     if what == "business logic":
-        return "FILTER (WHERE ...) has no DAX translation, only single aggregates are translated -> BLANK()"
+        return "FILTER (WHERE ...) has no DAX translation -> BLANK()"
     if what == "composed":
-        return "MEASURE() references to other measures aren't translated -> BLANK()"
+        return "MEASURE() references aren't translated -> BLANK()"
     return "no DAX translation -> BLANK()"
 
 
-def key_mismatch(rel: dict, ossie: dict) -> str:
-    """Why a relationship is skipped: it names a column that is not a field of that dataset."""
+def key_mismatch(rel: dict, ossie: dict) -> tuple[str, str] | None:
+    """(column the relationship names, field it should name) when the key was renamed."""
     datasets = {d["name"]: d.get("fields", []) for d in ossie["datasets"]}
     for side, cols in (("from", rel["from_columns"]), ("to", rel["to_columns"])):
         fields = datasets[rel[side]]
         for col in cols:
             if not any(f["name"] == col for f in fields):
                 renamed = next((f["name"] for f in fields if plain_column(f) == col), None)
-                if renamed:
-                    return (f"Databricks names the {rel[side]} key '{renamed}' (one namespace), "
-                            f"the relationship still says '{col}'")
-                return f"the relationship uses '{col}', which is no field of {rel[side]}"
-    return ""
+                return col, renamed or "?"
+    return None
 
 
 def plain_summary(view: dict, raw: "Result", fix: "Result", raw_ossie: dict, show_fix: bool) -> None:
+    """The talk version: what arrives, then what was fixed by hand. --details has the rest."""
     measures = view.get("measures", [])
-    dims = view.get("dimensions", [])
     rels = raw_ossie.get("relationships", [])
-    items = measures + dims
+    n_columns = sum(len(d.get("fields", [])) for d in raw_ossie["datasets"])
+    broken_rels = [r for r in rels if raw.relationship(r)[0] != "ok"]
+    untyped = raw.typed() < n_columns
 
     pause()
     print(paint("1", "\n  What arrives in Power BI?"))
-
-    print(paint("1", "\n  Measures"))
     correct = 0
     for m in measures:
         state, dax, _ = raw.measure(m["name"])
         correct += state == "ok"
         plain(state, m["name"], kind(m), OUTCOME[state], explain_measure(m, state, dax))
 
-    print(paint("1", "\n  Metadata"))
-    meta = [
-        ("descriptions", "comment", raw.described(), "arrive", "partly arrive",
-         "Databricks comment -> Power BI description, visible to report builders and Copilot"),
-        ("display names", "display_name", 0, "", "lost",
-         "Power BI has no display name next to the column / measure name"),
-        ("formats", "format", raw.formats(), "arrive", "lost",
-         "Ossie keeps them as a Databricks extension, the Power BI converter doesn't read it"),
-    ]
-    for label, key, arrived, ok_text, lost_text, why in meta:
-        wanted = sum(1 for i in items if i.get(key))
-        if wanted:
-            state = "ok" if arrived >= wanted else "lost"
-            plain(state, f"{label} ({wanted})", "", ok_text if state == "ok" else lost_text, why)
-    if wanted_syn := sum(1 for i in items if i.get("synonyms")):
-        plain("wrong", f"synonyms ({wanted_syn})", "", "only as a custom annotation",
-              "Power BI keeps synonyms in its linguistic schema, Ossie writes them into an annotation")
-
-    print(paint("1", "\n  Structure"))
-    columns = [(d["name"], f["name"]) for d in raw_ossie["datasets"] for f in d.get("fields", [])]
-    arrived = sum(1 for c in columns if raw.column(*c)[0] == "ok")
-    plain("ok" if arrived == len(columns) else "lost", f"columns ({len(columns)})", "",
-          "arrive" if arrived == len(columns) else f"{arrived} arrive",
-          f"{len(raw_ossie['datasets'])} tables, read from OneLake")
-    typed = raw.typed()
-    plain("ok" if typed >= len(columns) else "lost", f"column types ({len(columns)})", "",
-          "arrive" if typed >= len(columns) else "lost: Fabric refuses the model",
-          "" if typed >= len(columns) else "a Metric View has no column types, so Ossie gets none either")
-    for rel in rels:
-        state = raw.relationship(rel)[0]
-        plain(state, f"{rel['from']} -> {rel['to']}", "",
-              "arrives" if state == "ok" else "lost: tables no longer connected",
-              "" if state == "ok" else key_mismatch(rel, raw_ossie))
+    problems, why = [], []
+    if untyped:
+        problems.append("no column types")
+        why.append("Metric View has no types, Fabric refuses the model")
+    if broken_rels:
+        problems.append("tables not connected")
+        if found := key_mismatch(broken_rels[0], raw_ossie):
+            why.append(f"relationship says {found[0]}, field is {found[1]}")
+    if problems:
+        plain("lost", "model", "", ", ".join(problems), " · ".join(why))
 
     pause()
-    print(f"\n  Converter: {paint('32', 'success')}" + paint("2", "  (exit code 0, the losses are only in the warnings)"))
-    pause()
-    print(paint("1", f"  → {len(measures)} measures in, {correct} arrive{'s' if correct == 1 else ''} correctly."))
+    print(f"\n  Converter: {paint('32', 'success')}"
+          + paint("1", f"  → {correct} of {len(measures)} measures correct"))
 
     if not show_fix:
         return
     pause()
-    print(paint("1", "\n  Can Ossie fix it?") + paint("2", "  same steps, with four changes in the Ossie file"))
-    fixed_ok = sum(1 for m in measures if fix.measure(m["name"])[0] == "ok")
-    with_dax = [m["name"] for m in measures if raw.measure(m["name"])[0] != "ok"]
-    plain("ok" if fixed_ok == len(measures) else "lost", f"{fixed_ok} of {len(measures)} measures", "",
-          "correct", f"DAX written next to the SQL for {', '.join(with_dax)}" if with_dax else "")
-    for rel in rels:
-        if raw.relationship(rel)[0] != "ok":
-            state = fix.relationship(rel)[0]
-            plain(state, f"{rel['from']} -> {rel['to']}", "", "connected" if state == "ok" else "still lost",
-                  "the relationship now names the field, not the physical column")
-    if raw.typed() < len(columns):
-        state = "ok" if fix.typed() >= len(columns) else "lost"
-        plain(state, f"column types ({len(columns)})", "", "arrive" if state == "ok" else "still lost",
-              "datatype written into the Ossie file")
-    if wanted_fmt := sum(1 for i in items if i.get("format")):
-        state = "ok" if fix.formats() >= wanted_fmt else "lost"
-        plain(state, f"formats ({wanted_fmt})", "", "arrive" if state == "ok" else "still lost",
-              "Databricks format -> Power BI formatString")
+    print(paint("1", "\n  Fixed in the Ossie file") + paint("2", "  (converters unchanged)"))
+    if broken_rels:
+        print(paint("2", "    universal fix: the same code works for any Metric View"))
+        found = key_mismatch(broken_rels[0], raw_ossie)
+        ok = all(fix.relationship(r)[0] == "ok" for r in broken_rels)
+        plain("ok" if ok else "lost", "relationship", "",
+              (f"points at {found[1]}" if found else "fixed") if ok else "still broken")
+    print(paint("2", "    added for this model: fixes.yaml, written by hand"))
+    fixed_ok = 0
+    for m in measures:
+        if raw.measure(m["name"])[0] == "ok":
+            fixed_ok += 1
+            continue
+        state = fix.measure(m["name"])[0]
+        fixed_ok += state == "ok"
+        plain(state, m["name"], "", "DAX added next to the SQL" if state == "ok" else "still wrong")
+    if untyped:
+        ok = fix.typed() >= n_columns
+        plain("ok" if ok else "lost", "column types", "", f"datatype for {n_columns} columns" if ok else "still missing")
     pause()
-    print(paint("1", f"  → {fixed_ok} of {len(measures)} measures correct.")
-          + " Display names and synonyms stay lost. And the DAX was written by hand.")
+    print(paint("1", f"  → {fixed_ok} of {len(measures)} correct in Fabric."))
 
 
 # --- the trip --------------------------------------------------------------------------------

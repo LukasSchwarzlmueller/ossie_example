@@ -47,19 +47,22 @@ uv run databricks_to_powerbi/run_trip.py --dry-run          # offline: no Databr
 2. **Run:** `uv run databricks_to_powerbi/run_trip.py --step` (`--dry-run` as the offline fallback).
    `--step` waits for Enter before each summary line, so every line gets its sentence.
    The summary is in plain words (simple sum / count rows / business logic / time logic ->
-   arrives / arrives empty / wrong), then a second pass with the fixes. `--details` shows SQL,
+   arrives / arrives empty / wrong), then what was fixed by hand. `--details` shows SQL,
    DAX and the converter's reasons instead.
 3. **Fabric / Power BI:** the model with the relationship and the DAX measures.
 
 ## What the summary shows
 
 The output first lists the steps (read from Databricks, Databricks -> Ossie, Ossie -> Power BI,
-upload), then "What arrives in Power BI?" in three groups: measures, metadata (descriptions,
-display names, formats, synonyms), structure (columns, relationship). Then "Can Ossie fix it?".
+upload), then "What arrives in Power BI?": one line per measure and one for the model (types,
+relationship), each with one short line on why. Then "Fixed in the Ossie file", in two groups:
+the universal fix (code that works for any Metric View: the relationship key) and what was
+added for this model by hand in `fixes.yaml` (DAX for the measures, column types).
 
-Metadata as is: descriptions arrive; display names and formats are lost; synonyms land only as
-an `OssieAIContext` annotation, not as Power BI synonyms (linguistic schema). The fix pass
-maps the Databricks `format` to a Power BI `formatString`.
+Not in the talk summary, only with `--details`: metadata. Descriptions arrive; display names
+and formats are lost; synonyms land only as an `OssieAIContext` annotation, not as Power BI
+synonyms (linguistic schema). The fix pass also maps the Databricks `format` to a Power BI
+`formatString`.
 
 As is (`model_raw.bim`):
 - `total_revenue` (`SUM`) arrives as DAX.
