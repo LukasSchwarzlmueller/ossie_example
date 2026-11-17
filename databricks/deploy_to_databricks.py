@@ -8,6 +8,8 @@ catalog/schema) and a running SQL warehouse. Auth + warehouse ID come from
 
 import os
 
+import yaml
+
 from databricks.sdk import WorkspaceClient
 
 from common.env import REPO_ROOT, load_env_file
@@ -66,7 +68,7 @@ def main() -> None:
 
     metric_view_path = REPO_ROOT / "databricks" / "metric_view.yaml"
     metric_view_yaml = metric_view_path.read_text()
-    if f"source: {qualified}." not in metric_view_yaml:
+    if not str(yaml.safe_load(metric_view_yaml).get("source", "")).startswith(f"{qualified}."):
         raise SystemExit(
             f"databricks/metric_view.yaml isn't qualified for {qualified} - "
             "run 'uv run python3 databricks/export_metric_view.py' first "

@@ -89,6 +89,62 @@ still worked: `ossie_snowflake.converter.convert_osi_to_snowflake` ->
 never imports typed classes from the `ossie` package at all, confirmed by
 grepping its source, so it was never exposed to any of this renaming.
 
+**Third round: upstream split into two repos (2026-10-21, upstream #523).**
+`apache/ossie` kept the spec and the core `apache-ossie` package
+(`python/`); every converter moved to the top level of
+`apache/ossie-converters` (`converters/microsoft` -> `microsoft`, etc.),
+which pins `apache/ossie` as its `ossie/` git submodule. The old
+`converters/...` paths still resolve at older `apache/ossie` commits, so
+nothing broke on the day, but no converter fix lands there any more.
+Re-pinned dbt, Snowflake and Microsoft to `ossie-converters@853c529`. The
+first attempt pinned core straight from `apache/ossie` and failed to lock:
+the dbt converter declares `apache-ossie = { path = "../ossie/python" }`
+(its submodule), and uv refuses two URLs for one package. Core now comes
+from `ossie-converters`, `subdirectory = "ossie/python"`, so one rev bumps
+core and converters together, to the pair upstream tests. uv fetches the
+submodule on its own. The Python Databricks converter, already removed
+upstream before the split, stays on `apache/ossie@a5bdbbc`, and
+`databricks/build_converter.sh` now builds the Java one from
+`ossie-converters` into `.ossie-converters/` (the Java source is unchanged
+from the `7c03c46` it built before). Verified like the rounds above: every
+export (Snowflake, Microsoft TMSL and TMDL, both Databricks Python paths,
+the dbt manifest and `mf query`) came out byte-identical.
+
+**Fourth round: spec name resolution (2026-10-26).** Bumped to
+`ossie-converters@8111496` (core `apache/ossie@7205e15` via the submodule);
+on its own every export stayed byte-identical. The spec now says how names
+resolve (apache/ossie#486): model-level metrics must qualify every field as
+`dataset.field`, and `primary_key`, `unique_keys` and relationship columns must
+name *declared fields*, not source columns. Changes per copy:
+
+- every copy: `SUM(order_amount)` / `AVG(order_amount)` -> `SUM(orders.order_amount)`
+  / `AVG(orders.order_amount)`;
+- Databricks (Java and Python): the `customers` key is now a field named
+  `customer_key` (expression `customer_id`), used in `primary_key` and
+  `to_columns`, so it doesn't clash with `orders.customer_id` in the Metric
+  View namespace. The join comes out as `on: source.customer_id =
+  customers.customer_key` instead of `using: [customer_id]`;
+- Snowflake: `customers.customer_id` is a field again;
+- DuckDB: back to the flat shape; the `ossie` extension has a v0.3.0 build for
+  DuckDB 1.5.6/2.0.0 that reads it (the 1.5.5 build still doesn't), and DuckDB
+  moved to 1.5.6.
+
+Verified: dbt manifest and Power BI -> Databricks byte-identical, `mf query`
+and the DuckDB query return the same numbers, the other exports differ only
+as described. Not re-deployed to Databricks, Snowflake or Fabric.
+
+**Databricks re-deploy (2026-10-27).** The fourth-round view failed to deploy:
+`UNRESOLVED_COLUMN ... customers.customer_key`. The Java converter put
+relationship column *names* straight into the join's `on`, but since
+apache/ossie#486 those are field names, and a Metric View join runs against
+the source tables. Patched `OssieToMetricView.buildJoin` to map each
+relationship column to its field's expression (a plain column; anything else
+keeps the name with a warning). Both sides now read `customer_id`, so the join
+is `using: [customer_id]` again. The patch lives in `databricks/patches/` and
+`build_converter.sh` applies it; upstream tests still pass. Deployed and
+queried: revenue 340.50 / 40.00 / 610.25 for customers 1 / 2 / 3, as seeded.
+The deprecated Python converter was not checked.
+
 ## Databricks: one structural conflict with dbt-core's native loader, otherwise clean
 
 Converting the same model with `ossie-databricks export` reveals two
@@ -449,7 +505,7 @@ scratch, silently reverting the patch. Re-run
 
 ## Microsoft Fabric / Power BI: measures carry over, labels and datatypes don't
 
-`apache-ossie-microsoft` (same `a5bdbbc` pin as every other converter,
+`apache-ossie-microsoft` (same pin as the other converters,
 installed with its `tom` extra) turns `microsoft/ossie/orders_customers.yaml`
 into a TMSL `model.bim`; `microsoft/export_semantic_model.py` wraps it.
 The result is a Direct Lake model: one `DatabaseQuery` expression pointing
@@ -503,7 +559,7 @@ the split-per-table folder, which only TOM's
 it directly through two *private* helpers (`_load_tom`,
 `_assembly_directory`). They aren't public API, so check them after every
 pin bump. TOM is .NET, loaded via pythonnet, and needs its assemblies
-restored first (`converters/microsoft/scripts/restore_tom.py` upstream).
+restored first (`microsoft/scripts/restore_tom.py` in apache/ossie-converters).
 Without them, TMDL fails with `TomUnavailableError`.
 
 **Getting it into Fabric.** TOM's folder output is only the `definition/`

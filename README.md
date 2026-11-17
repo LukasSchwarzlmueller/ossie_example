@@ -17,10 +17,10 @@ fixes it needed.
 | [databricks/](databricks/README.md) | Ossie -> Unity Catalog Metric View | JDK 21+, Maven; a workspace to deploy | clean |
 | [snowflake/](snowflake/README.md) | Ossie -> Snowflake semantic view | an account to deploy | works with one deploy-time fix |
 | [microsoft/](microsoft/README.md) | Ossie -> Power BI / Fabric semantic model (Direct Lake) | .NET and TOM for TMDL; a workspace to deploy | clean |
-| [duckdb/](duckdb/README.md) | queries the Ossie file directly, no conversion | nothing, runs locally | works with a differently shaped model |
+| [duckdb/](duckdb/README.md) | queries the Ossie file directly, no conversion | nothing, runs locally (DuckDB 1.5.6+) | works |
 | [powerbi_databricks/](powerbi_databricks/README.md) | Power BI model -> Ossie -> Metric View | .NET and TOM for TMDL | dimensions and joins only, DAX measures are dropped |
 | [roundtrip_databricks/](roundtrip_databricks/README.md) | Metric View -> Ossie -> Metric View | the Databricks export | content survives |
-| [roundtrip_powerbi/](roundtrip_powerbi/README.md) | Ossie -> Power BI -> Ossie -> Power BI | nothing | Power BI side stable, Ossie side loses detail |
+| [roundtrip_powerbi/](roundtrip_powerbi/README.md) | Ossie -> Fabric semantic model -> Ossie, through a real workspace | a Fabric workspace, `az` login | tables, relationship and metrics survive; labels, datatypes and SQL dialects are lost |
 | [databricks_python_deprecated/](databricks_python_deprecated/README.md) | the old Python Databricks converter | nothing | kept for reference |
 
 ## Setup
@@ -37,8 +37,8 @@ cp .env.example .env   # only for deploying to Databricks, Snowflake or Fabric
 fall back to default names.
 
 Anything TMDL needs a .NET runtime and Microsoft's TOM assemblies in
-`.tom/assemblies`, restored with `converters/microsoft/scripts/restore_tom.py`
-from the [apache/ossie](https://github.com/apache/ossie) repo. The TMSL
+`.tom/assemblies`, restored with `microsoft/scripts/restore_tom.py`
+from the [apache/ossie-converters](https://github.com/apache/ossie-converters) repo. The TMSL
 (`model.bim`) paths need neither.
 
 ## Quick start
@@ -76,7 +76,7 @@ Databricks, Snowflake and DuckDB return the same numbers.
 - `<target>/export_*.py`: offline conversion, writes the target's native file.
 - `<target>/deploy_to_*.py`: deploys against a real workspace or account.
 - `src/common/`: shared `.env` loading and the Java converter wrapper.
-- `pyproject.toml`: pins the `apache-ossie-*` packages to one upstream commit.
+- `pyproject.toml`: pins the `apache-ossie-*` packages to one [apache/ossie-converters](https://github.com/apache/ossie-converters) commit (core comes from its `ossie/` submodule); only the old Python Databricks converter stays on an older [apache/ossie](https://github.com/apache/ossie) commit.
 
 ## Further reading
 

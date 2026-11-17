@@ -1,7 +1,7 @@
 """Convert databricks/ossie/orders_customers.yaml to metric_view.yaml.
 
-Uses the Java converter from apache/ossie (the Python one was removed
-upstream). Replaces the model's `__catalog__.__schema__` source placeholder
+Uses the Java converter from apache/ossie-converters (the Python one was
+removed upstream). Replaces the model's `__catalog__.__schema__` source placeholder
 with DATABRICKS_CATALOG/DATABRICKS_SCHEMA from .env before conversion - see
 NOTES.md. Pass --warnings to see what the converter reports.
 

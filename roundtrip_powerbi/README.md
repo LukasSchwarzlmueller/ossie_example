@@ -1,21 +1,38 @@
-# Power BI round trip
+# Power BI round trip: demo
 
-Ossie -> Power BI -> Ossie -> Power BI, with every intermediate file in `out/`.
+Ossie -> Fabric semantic model -> Ossie, through a real Fabric workspace.
 
-## Run
+## Before the demo
 
-Run from the repo root.
+1. `.env` has `FABRIC_WORKSPACE_ID`, `FABRIC_LAKEHOUSE_ID` and optionally
+   `FABRIC_FOLDER_ID` (from the lakehouse URL `app.powerbi.com/groups/<workspace>/lakehouses/<lakehouse>`).
+2. The `ossie` lakehouse has `dbo.customers` and `dbo.orders`, so the model
+   shows data. The data is in `dbt/models/*.sql`.
+3. Log in from a **Windows** PowerShell window. On WSL, the Linux `az` is blocked
+   by Conditional Access (error 530033):
+   ```powershell
+   az login --tenant <FABRIC_TENANT> --allow-no-subscriptions   # FABRIC_TENANT from .env
+   ```
+4. Do a dry run and keep `powerbi/` and `ossie_from_fabric/` as a fallback.
 
-```bash
-uv run roundtrip_powerbi/run_roundtrip.py   # add --tmdl for a TMDL folder (needs TOM), --warnings for drops
-```
+## Demo
 
-## Findings
-
-- The two `model.bim` files have the same content, so the Power BI side is stable.
-- The Ossie file does not come back the same. Lost: every non-DAX dialect, display labels, measure datatypes, and the catalog part of `source`.
-- Gained: `POWER_BI` custom extensions holding partitions, format strings and the relationship name.
-
-## Fixes needed
-
-- None. The differences are expected, so the script reports them without failing.
+1. **Start:** show `ossie/orders_customers.yaml`: 2 tables, 1 relationship,
+   3 metrics, several SQL dialects per expression.
+2. **Run:**
+   ```bash
+   uv run roundtrip_powerbi/run_fabric_roundtrip.py
+   ```
+   It converts to `model.bim`, uploads to Fabric, downloads it again,
+   converts back to Ossie and prints every change per object, with the
+   reason next to it (`--diff` adds the raw line diff). It writes two files to show:
+   - `powerbi/model.bim`, the Ossie -> Power BI conversion (Fabric gets it with two fixes, see the script)
+   - `ossie_from_fabric/orders_customers.yaml`, the Ossie file that comes back
+3. **Fabric:** open the `sales_demo` semantic model: Direct Lake, the measures
+   and the relationship, plus one visual (Total Revenue by Customer Segment).
+4. **Diff:** group the differences into three kinds:
+   - Power BI can't hold it: `label`s and measure `datatype`s
+   - only DAX survives: the SQL dialects are gone
+   - Fabric restriction: Direct Lake allows no calculated columns, so `customer_name` loses `UPPER(...)`
+5. **Takeaway:** tables, relationship, metrics and AI context survive the round trip
+   through the real service. Vendor-specific details are kept in `custom_extensions`.

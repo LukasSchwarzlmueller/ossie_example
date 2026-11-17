@@ -3,7 +3,7 @@ from pathlib import Path
 
 from common.env import REPO_ROOT
 
-BUILD_DIR = REPO_ROOT / ".ossie" / "converters" / "databricks" / "java" / "target"
+BUILD_DIR = REPO_ROOT / ".ossie-converters" / "databricks" / "java" / "target"
 
 
 def find_jar() -> Path:

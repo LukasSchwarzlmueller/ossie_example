@@ -21,25 +21,25 @@ enterprise                 950.75           316.917             3
 Same figures as dbt, Databricks and Snowflake produce for the same model, which
 is the point of checking it.
 
-## The version pin is not optional
+## The DuckDB version matters
 
-Community extensions are built per DuckDB version, and at the time of writing
-`ossie` exists for **v1.5.5 only**. Every other version 404s on download:
+Community extensions are built per DuckDB version, and the builds differ:
 
-```
-HTTP Error: Failed to download extension "ossie" at URL
-".../v1.5.6/linux_amd64/ossie.duckdb_extension.gz" (HTTP 404)
-```
+| DuckDB | `ossie` extension | Reads the flat model? |
+|---|---|---|
+| 1.5.5 | older build (`5180c67`) | no: `document has no 'semantic_model' array` |
+| 1.5.6, 2.0.0 | v0.3.0 | yes |
 
-The repo pins `duckdb==1.5.5` already (via `dbt-duckdb`), so this works as-is.
-Upgrading DuckDB breaks it until a matching build is published.
+The repo uses DuckDB 1.5.6 (via `dbt-duckdb`). Until October 2026 only 1.5.5
+had a build at all, and every other version 404'd on download.
 
 ## What the model needed
 
 `ossie/orders_customers.yaml` is the same `sales_demo` model as the other
-targets, with three differences, all required by this extension.
+targets. It used to need three differences; the first is gone since the
+v0.3.0 extension.
 
-**1. It requires a `semantic_model:` array the spec no longer has.** The flat
+**1. (Fixed in v0.3.0) It required a `semantic_model:` array the spec no longer has.** The flat
 shape used by every other model in this repo is rejected outright:
 
 ```
@@ -58,12 +58,14 @@ version", 20 September) flattened every model when the spec dropped it. So the
 file in `duckdb/ossie/` is effectively a reversion to the shape everything here
 had a few weeks ago.
 
-Which makes this less a disagreement between implementations than a version
-skew: the extension is built against a spec revision that has since been
-removed, and the file it needs is one the rest of the ecosystem now refuses.
+Which made this less a disagreement between implementations than a version
+skew: the 1.5.5 build is built against a spec revision that has since been
+removed. The v0.3.0 build reads the flat shape, so the wrapper is gone from
+`duckdb/ossie/` again.
 
-**2. Metric columns must be qualified as `dataset.field`.** `SUM(order_amount)`
-is enough everywhere else, but here:
+**2. Metric columns must be qualified as `dataset.field`.** Since apache/ossie#486
+the spec requires this for every model-level metric, and all copies in this repo
+now do it. The extension enforces it:
 
 ```
 ossie_load: metric "total_revenue" references "order_amount"; a metric must
@@ -180,10 +182,8 @@ LOAD ossie;
 SELECT * FROM ossie_load('duckdb/ossie/orders_customers.yaml');
 ```
 
-**The CLI must be DuckDB 1.5.5.** The `ossie` extension only has a build for
-that version, so a 1.5.6 CLI fails with `Extension ".../v1.5.6/.../ossie.duckdb_extension"
-not found`. Run `duckdb --version` to check. If you need both versions, keep the
-1.5.5 binary somewhere on its own and call it by full path.
+**The CLI must be DuckDB 1.5.6 or newer.** A 1.5.5 CLI loads the older
+extension build, which rejects the flat model. Run `duckdb --version` to check.
 
 Plain SQL on the tables needs none of this, so a newer CLI is fine for looking at the data.
 

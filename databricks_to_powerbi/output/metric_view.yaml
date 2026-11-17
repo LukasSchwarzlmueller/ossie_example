@@ -1,0 +1,53 @@
+version: 1.1
+
+source: lschwarzlmueller_tests.ossie.orders
+
+joins:
+  - name: customers
+    source: lschwarzlmueller_tests.ossie.customers
+    "on": source.customer_id = customers.customer_id
+    rely:
+      at_most_one_match: true
+
+comment: Orders with customers (Databricks -> Ossie -> Power BI trip)
+
+dimensions:
+  - name: customer_id
+    expr: customer_id
+
+  - name: order_date
+    expr: order_date
+
+  - name: order_amount
+    expr: order_amount
+
+  - name: customer_key
+    expr: customers.customer_id
+
+  - name: customer_segment
+    expr: customers.customer_segment
+    comment: enterprise or smb
+
+measures:
+  - name: total_revenue
+    expr: SUM(order_amount)
+    comment: Total revenue across all orders
+    display_name: Total Revenue
+    format:
+      type: currency
+      currency_code: EUR
+    synonyms:
+      - revenue
+      - sales
+
+  - name: enterprise_revenue
+    expr: SUM(order_amount) FILTER (WHERE customers.customer_segment = 'enterprise')
+    comment: Revenue from enterprise customers only
+
+  - name: revenue_running_total
+    expr: SUM(order_amount)
+    window:
+      - order: order_date
+        semiadditive: last
+        range: cumulative
+    comment: Cumulative revenue up to each order date

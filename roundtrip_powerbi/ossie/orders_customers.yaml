@@ -90,7 +90,7 @@ metrics:
   expression:
     dialects:
     - dialect: ANSI_SQL
-      expression: SUM(order_amount)
+      expression: SUM(orders.order_amount)
     - dialect: DAX
       expression: "SUM(orders[order_amount])"
   description: Total revenue across all orders
@@ -118,7 +118,7 @@ metrics:
   expression:
     dialects:
     - dialect: ANSI_SQL
-      expression: AVG(order_amount)
+      expression: AVG(orders.order_amount)
   description: Average order value
   datatype: Decimal
   ai_context:

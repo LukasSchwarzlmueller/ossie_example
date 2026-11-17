@@ -1,0 +1,86 @@
+diff --git a/databricks/java/src/main/java/org/apache/ossie/converter/databricks/OssieToMetricView.java b/databricks/java/src/main/java/org/apache/ossie/converter/databricks/OssieToMetricView.java
+index c8b130f..50e1f24 100644
+--- a/databricks/java/src/main/java/org/apache/ossie/converter/databricks/OssieToMetricView.java
++++ b/databricks/java/src/main/java/org/apache/ossie/converter/databricks/OssieToMetricView.java
+@@ -196,7 +196,7 @@ final class OssieToMetricView {
+ 
+     List<Object> joins = new ArrayList<>();
+     for (Node child : root.children) {
+-      joins.add(buildJoin(child, "source", datasets, notices));
++      joins.add(buildJoin(child, "source", root.dataset, datasets, notices));
+     }
+     if (!joins.isEmpty()) {
+       view.put("joins", joins);
+@@ -699,7 +699,7 @@ final class OssieToMetricView {
+   }
+ 
+   private static Map<String, Object> buildJoin(Node node, String parentAlias,
+-      Map<String, Map<String, Object>> datasets, Notices notices) {
++      String parentDataset, Map<String, Map<String, Object>> datasets, Notices notices) {
+     Map<String, Object> rel = node.rel;
+     String alias = node.alias;
+     Map<String, Object> join = new LinkedHashMap<>();
+@@ -717,8 +717,12 @@ final class OssieToMetricView {
+       join.put("on", stash.get("on"));
+     } else {
+       validateJoinColumns(rel, fromCols, toCols);
+-      List<String> parentCols = node.parentIsFrom ? fromCols : toCols;
+-      List<String> childCols = node.parentIsFrom ? toCols : fromCols;
++      // Relationship columns name declared fields (apache/ossie#486), but the join `on`/`using`
++      // runs against the joined tables, so map each one to the column its field reads.
++      List<String> parentCols = joinColumns(node.parentIsFrom ? fromCols : toCols,
++          datasets.get(parentDataset), parentDataset, notices);
++      List<String> childCols = joinColumns(node.parentIsFrom ? toCols : fromCols,
++          datasets.get(node.dataset), node.dataset, notices);
+       if (parentCols.equals(childCols)) {
+         join.put("using", new ArrayList<>(parentCols));
+       } else {
+@@ -744,7 +748,7 @@ final class OssieToMetricView {
+     }
+     List<Object> nested = new ArrayList<>();
+     for (Node c : node.children) {
+-      nested.add(buildJoin(c, alias, datasets, notices));
++      nested.add(buildJoin(c, alias, node.dataset, datasets, notices));
+     }
+     if (!nested.isEmpty()) {
+       join.put("joins", nested);
+@@ -752,6 +756,39 @@ final class OssieToMetricView {
+     return join;
+   }
+ 
++  /**
++   * Maps relationship columns (declared field names) to the source columns those fields read. A
++   * name that is not a declared field is kept as-is. A field whose expression is not a plain
++   * column is kept by name, with a warning, since it can't be used in a join condition.
++   */
++  private static List<String> joinColumns(List<String> names, Map<String, Object> dataset,
++      String datasetName, Notices notices) {
++    List<String> out = new ArrayList<>();
++    for (String name : names) {
++      String column = name;
++      for (Object o : asList(get(dataset, "fields"))) {
++        if (!(o instanceof Map)) {
++          continue;
++        }
++        @SuppressWarnings("unchecked")
++        Map<String, Object> f = (Map<String, Object>) o;
++        if (name.equals(str(get(f, "name")))) {
++          String scope = "field '" + datasetName + "." + name + "'";
++          String expr = pickExpression(get(f, "expression"), scope);
++          if (expr != null && isSimpleIdentifier(expr.trim())) {
++            column = expr.trim();
++          } else if (expr != null) {
++            notices.warn(scope, "join column is not a plain column expression; joining on the "
++                + "field name as-is");
++          }
++          break;
++        }
++      }
++      out.add(column);
++    }
++    return out;
++  }
++
+   private static boolean coversUniqueKey(Map<String, Object> dataset, List<String> joinCols) {
+     Set<String> cols = new HashSet<>(joinCols);
+     List<List<String>> keys = new ArrayList<>();
