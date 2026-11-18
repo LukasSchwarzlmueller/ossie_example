@@ -203,3 +203,17 @@ def rescue_converter_output(converted: dict, metric_view_yaml: str) -> dict:
     if measures:
         model["metrics"] = [_metric(measure, fact, "filter" in view, converted_metrics) for measure in measures]
     return model | _extension(_stash(view, ("filter", "parameters", "materialization")))
+
+
+def renamed_keys(metric_view_yaml: str, model: dict) -> list[tuple[str, str, str]]:
+    """(dataset, name in the Metric View, name in the model) of each join key that got its column name back."""
+    view = yaml.safe_load(metric_view_yaml)
+    fact = view["source"].rsplit(".", 1)[-1].strip("`")
+    joined = {join["name"] for join in view.get("joins") or []}
+    datasets = {dataset["name"]: dataset for dataset in model["datasets"]}
+    renamed = []
+    for dimension in view.get("dimensions") or view.get("fields") or []:
+        dataset, expr = _dataset_of(dimension, fact, joined)
+        if all(field["name"] != dimension["name"] for field in datasets[dataset]["fields"]):
+            renamed.append((dataset, dimension["name"], expr))
+    return renamed

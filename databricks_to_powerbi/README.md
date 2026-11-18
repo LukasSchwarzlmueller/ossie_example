@@ -61,7 +61,9 @@ uv run databricks_to_powerbi/run_trip.py --dry-run          # offline: no Databr
 ## What the summary shows
 
 The output first lists the steps (read from Databricks, the official converter's Databricks -> Ossie,
-the rescue of its Ossie file, Ossie -> Power BI, upload), then "What arrives in
+the rescue of its Ossie file, Ossie -> Power BI, upload). "What does the official converter lose?" shows
+the tables and the relationship going missing, and "Rescued in the Ossie file" shows the universal fix that
+brings them back, including the key the Metric View renamed. Then "What arrives in
 Power BI?": one line per measure and one for the model, each with one short line on why. Then
 "Fixed in the Ossie file": what was added for this model by hand in `fixes.yaml` (DAX for the
 measures, column types). The last line counts the measures that have DAX. It does not check their

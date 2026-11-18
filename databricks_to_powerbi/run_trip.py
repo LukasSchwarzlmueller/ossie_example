@@ -49,7 +49,7 @@ from ossie_microsoft import convert_ossie_to_semantic_model
 
 from common.databricks_converter import wrap_metric_view
 from common.env import REPO_ROOT, load_env_file
-from common.metric_view_rescue import rescue_converter_output
+from common.metric_view_rescue import renamed_keys, rescue_converter_output
 
 HERE = REPO_ROOT / "databricks_to_powerbi"
 OUT = HERE / "output"
@@ -358,6 +358,30 @@ def key_mismatch(rel: dict, ossie: dict) -> tuple[str, str] | None:
     return None
 
 
+def rescue_summary(converted: dict, rescued: dict, renames: list[tuple[str, str, str]]) -> None:
+    """What the official converter lost, and how the rescue got the tables and relationship back."""
+    tables = [dataset["name"] for dataset in rescued["datasets"]]
+    relationships = rescued.get("relationships", [])
+
+    pause()
+    print(paint("1", "\n  What does the official converter lose?"))
+    plain("lost", "tables", "", f"{len(tables)} -> {len(converted['datasets'])}",
+          "the metric view arrives as one table, not as the tables behind it")
+    plain("lost", "relationship", "", f"{len(relationships)} -> {len(converted.get('relationships', []))}",
+          "the join stays hidden inside the metric view")
+
+    pause()
+    print(paint("1", "\n  Rescued in the Ossie file") + paint("2", "  (official converter unchanged)"))
+    print(paint("2", "    universal fix: the same code works for any Metric View"))
+    plain("ok", "tables", "", ", ".join(tables), "rebuilt from the source and the joins of the metric view")
+    for rel in relationships:
+        pairs = zip(rel["from_columns"], rel["to_columns"])
+        link = ", ".join(f"{rel['from']}[{a}] -> {rel['to']}[{b}]" for a, b in pairs)
+        keys = [f"the metric view calls the key {old}, the real column is {new}"
+                for dataset, old, new in renames if dataset in (rel["from"], rel["to"])]
+        plain("ok", "relationship", "", link, "; ".join(keys) or "rebuilt from the join of the metric view")
+
+
 def plain_summary(view: dict, raw: "Result", fix: "Result", raw_ossie: dict, show_fix: bool) -> None:
     """The talk version: what arrives, then what was fixed by hand. --details has the rest."""
     measures = view.get("measures", [])
@@ -531,6 +555,8 @@ def main() -> None:
     # --- summary -------------------------------------------------------------------------------
     raw = Result(raw_ossie, raw_bim, raw_messages)
     fix = Result(fixed_ossie, bim, messages)
+
+    rescue_summary(converted, raw_ossie, renamed_keys(view_yaml, raw_ossie))
 
     if not args.details:
         plain_summary(view, raw, fix, raw_ossie, show_fix=not args.raw)
