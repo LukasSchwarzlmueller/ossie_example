@@ -50,6 +50,15 @@ def ossie_to_metric_views(ossie_yaml: str, catalog: str, schema: str) -> tuple[d
     return views, [str(warning) for warning in result.warnings]
 
 
+def wrap_metric_view(metric_view_yaml: str, view_name: str) -> tuple[dict, list[str]]:
+    """The official Python converter's Ossie model of a Metric View, and its warnings."""
+    _use_ossie_checkout()
+    from ossie_databricks import wrap_metric_view_in_ossie_model
+
+    result = wrap_metric_view_in_ossie_model(view_name, metric_view_yaml)
+    return yaml.safe_load(result.value), [str(warning) for warning in result.warnings]
+
+
 def find_jar() -> Path:
     """Java Databricks converter jar: $OSSIE_DATABRICKS_JAR, else the build_converter.sh output."""
     if env_jar := os.environ.get("OSSIE_DATABRICKS_JAR"):

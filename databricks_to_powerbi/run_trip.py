@@ -1,20 +1,22 @@
 """The whole trip: Databricks Metric View -> Ossie -> Power BI (-> Fabric), red/green per object.
 
   0. pull the Metric View definition from Databricks (SHOW CREATE TABLE) -> output/metric_view.yaml
-  1. Metric View -> output/ossie.yaml               common/metric_view_import.py
-  2. "mirroring": dataset sources Unity Catalog -> OneLake lakehouse (only the names change)
-  3. fixes in Ossie -> output/ossie_fixed.yaml       see FIXES below
-  4. both Ossie files -> Power BI                    output/model_raw.bim, output/model.bim
-  5. Fabric glue + upload of model.bim to Fabric (code from roundtrip_powerbi/), then a refresh
+  1. Metric View -> output/ossie_converter.yaml     official Python Databricks converter
+  2. rescue -> output/ossie.yaml                    common/metric_view_rescue.py puts back the
+     tables, relationship and formulas the converter dropped
+  3. "mirroring": dataset sources Unity Catalog -> OneLake lakehouse (only the names change)
+  4. fixes in Ossie -> output/ossie_fixed.yaml       see FIXES below
+  5. both Ossie files -> Power BI                    output/model_raw.bim, output/model.bim
+  6. Fabric glue + upload of model.bim to Fabric (code from roundtrip_powerbi/), then a refresh
      so the Direct Lake model has data
 
---dry-run needs no account: step 0 reads the local metric_view.yaml instead, step 5 writes
+--dry-run needs no account: step 0 reads the local metric_view.yaml instead, step 6 writes
 output/model_fabric.bim (what would be uploaded) and sends nothing.
 
 The summary shows, per measure, column and relationship, what arrives as is (green), what is
 lost (red) or arrives with a wrong value (yellow), and below it what the fix in Ossie gets back.
 
-FIXES - everything happens in the Ossie file, the converters stay as they are:
+FIXES - everything happens in the Ossie file, the Microsoft converter stays as it is:
   - DAX from fixes.yaml as a second dialect for measures that don't translate from SQL
   - Databricks `format` (kept in nonportable_extensions) -> Power BI formatString
   - column types from fixes.yaml: a Metric View has none, and Fabric refuses the model without
@@ -45,8 +47,9 @@ import yaml
 
 from ossie_microsoft import convert_ossie_to_semantic_model
 
+from common.databricks_converter import wrap_metric_view
 from common.env import REPO_ROOT, load_env_file
-from common.metric_view_import import metric_view_to_ossie
+from common.metric_view_rescue import rescue_converter_output
 
 HERE = REPO_ROOT / "databricks_to_powerbi"
 OUT = HERE / "output"
@@ -230,7 +233,7 @@ class Result:
         has_dax = any(d["dialect"] == "DAX" for d in dialects(self.metrics[name]))
         window = stash(self.metrics[name], "DATABRICKS").get("window")
         if window and not has_dax:
-            return "wrong", dax, "window dropped: plain SUM, wrong number, no warning"
+            return "wrong", dax, "window dropped: plain SUM, wrong number, no clear warning"
         return "ok", dax, ""
 
     def column(self, dataset: str, field: str) -> tuple[str, str]:
@@ -312,7 +315,7 @@ def kind(measure: dict) -> str:
 OUTCOME = {
     "ok": "arrives",
     "lost": "arrives empty",
-    "wrong": "wrong number, no warning",
+    "wrong": "wrong number, no clear warning",
 }
 
 
@@ -383,13 +386,13 @@ def plain_summary(view: dict, raw: "Result", fix: "Result", raw_ossie: dict, sho
         plain("lost", "model", "", ", ".join(problems), " · ".join(why))
 
     pause()
-    print(f"\n  Converter: {paint('32', 'success')}"
+    print(f"\n  Microsoft converter: {paint('32', 'success')}"
           + paint("1", f"  → {correct} of {len(measures)} measures correct"))
 
     if not show_fix:
         return
     pause()
-    print(paint("1", "\n  Fixed in the Ossie file") + paint("2", "  (converters unchanged)"))
+    print(paint("1", "\n  Fixed in the Ossie file") + paint("2", "  (Microsoft converter unchanged)"))
     if broken_rels:
         print(paint("2", "    universal fix: the same code works for any Metric View"))
         found = key_mismatch(broken_rels[0], raw_ossie)
@@ -409,7 +412,15 @@ def plain_summary(view: dict, raw: "Result", fix: "Result", raw_ossie: dict, sho
         ok = fix.typed() >= n_columns
         plain("ok" if ok else "lost", "column types", "", f"datatype for {n_columns} columns" if ok else "still missing")
     pause()
-    print(paint("1", f"  → {fixed_ok} of {len(measures)} correct in Fabric."))
+    print(paint("1", f"  → {fixed_ok} of {len(measures)} measures have DAX, check the numbers in Fabric."))
+
+
+def shape(ossie: dict) -> str:
+    """What an Ossie model holds, in words."""
+    tables, relationships = len(ossie["datasets"]), len(ossie.get("relationships", []))
+    measures = len(ossie.get("metrics", [])) + sum(len(d.get("metrics", [])) for d in ossie["datasets"])
+    return (f"{tables} table{'s' if tables != 1 else ''} · {relationships} "
+            f"relationship{'s' if relationships != 1 else ''} · {measures} measures")
 
 
 # --- the trip --------------------------------------------------------------------------------
@@ -445,11 +456,11 @@ def main() -> None:
     print(paint("1", "Databricks metric view  ->  Ossie  ->  Power BI semantic model\n"))
 
     # 0. The Metric View: from Databricks, or the local file in a dry run
+    view_name = f"{uc}.{os.environ.get('DATABRICKS_TRIP_VIEW_NAME', 'sales_demo_trip')}"
     if args.dry_run:
         print("  ① Read the metric view                 metric_view.yaml " + paint("2", "(dry run, no Databricks)"))
         view_yaml = (HERE / "metric_view.yaml").read_text().replace(PLACEHOLDER, uc)
     else:
-        view_name = f"{uc}.{os.environ.get('DATABRICKS_TRIP_VIEW_NAME', 'sales_demo_trip')}"
         print(f"  ① Read the metric view from Databricks {view_name}")
         view_yaml = pull_metric_view(view_name)
 
@@ -459,16 +470,23 @@ def main() -> None:
     joins = len(view.get("joins", []))
     print(paint("2", f"     {len(view.get('measures', []))} measures · {len(view.get('dimensions', []))} columns · "
                      f"{joins} join{'s' if joins != 1 else ''}"))
-    print("  ② Databricks -> Ossie                  " + paint("2", "own import step"))
-    raw_ossie = metric_view_to_ossie(view_yaml)
+    print("  ② Databricks -> Ossie                  " + paint("2", "official Databricks converter"))
+    converted, _ = wrap_metric_view(view_yaml, view_name)
+    (OUT / "ossie_converter.yaml").write_text(yaml.safe_dump(converted, sort_keys=False, allow_unicode=True))
+    print(paint("2", f"     {shape(converted)}: the metric view as one table, the join is gone"))
 
-    # 2. "Mirroring": same tables, now read from OneLake
+    # 2. Rescue what the converter dropped, from the Metric View itself
+    print("  ③ Rescue the Ossie file                " + paint("2", "tables, relationship, formulas from the metric view"))
+    raw_ossie = rescue_converter_output(converted, view_yaml)
+    print(paint("2", f"     {shape(raw_ossie)}"))
+
+    # 3. "Mirroring": same tables, now read from OneLake
     for dataset in raw_ossie["datasets"]:
         if dataset["source"].startswith(f"{uc}."):
             dataset["source"] = onelake + dataset["source"][len(uc):]
     (OUT / "ossie.yaml").write_text(yaml.safe_dump(raw_ossie, sort_keys=False, allow_unicode=True))
 
-    # 3. Fixes in Ossie
+    # 4. Fixes in Ossie
     fixed_ossie = copy.deepcopy(raw_ossie)
     notes = {}
     if not args.raw:
@@ -476,8 +494,8 @@ def main() -> None:
         notes = apply_fixes(fixed_ossie, fixes["metrics"], fixes.get("datatypes", {}))
         (OUT / "ossie_fixed.yaml").write_text(yaml.safe_dump(fixed_ossie, sort_keys=False, allow_unicode=True))
 
-    # 4. Ossie -> Power BI, as is and fixed
-    print("  ③ Ossie -> Power BI                    " + paint("2", "Microsoft converter"))
+    # 5. Ossie -> Power BI, as is and fixed
+    print("  ④ Ossie -> Power BI                    " + paint("2", "Microsoft converter"))
     print(paint("2", f"     tables read from OneLake ({onelake}), e.g. via mirroring"))
     raw_bim, raw_messages = to_powerbi(raw_ossie, source)
     bim, messages = (raw_bim, raw_messages) if args.raw else to_powerbi(fixed_ossie, source)
@@ -485,9 +503,9 @@ def main() -> None:
         (OUT / "model_raw.bim").write_text(json.dumps(raw_bim, indent=2))
     (OUT / "model.bim").write_text(json.dumps(bim, indent=2))
 
-    # 5. Fabric
+    # 6. Fabric
     if args.dry_run:
-        print("  ④ Upload to Fabric                     " + paint("2", "dry run, nothing sent"))
+        print("  ⑤ Upload to Fabric                     " + paint("2", "dry run, nothing sent"))
         upload = copy.deepcopy(bim)
         roundtrip.fabric_glue(upload)
         (OUT / "model_fabric.bim").write_text(json.dumps(upload, indent=2))
@@ -498,7 +516,7 @@ def main() -> None:
         if not source:
             raise SystemExit("Fabric upload needs FABRIC_WORKSPACE_ID and FABRIC_LAKEHOUSE_ID in .env "
                              "(or use --no-upload / --dry-run)")
-        print("  ④ Upload to Fabric")
+        print("  ⑤ Upload to Fabric")
         roundtrip.fabric_glue(bim)
         fabric = roundtrip.Fabric(roundtrip.get_token(), workspace_id)
         model_id, action = fabric.upload(bim, os.environ.get("FABRIC_FOLDER_ID"))
@@ -562,7 +580,7 @@ def main() -> None:
         if state != "ok" and not args.raw and fix.relationship(rel)[0] == "ok":
             fixed("relationship built", notes.get(f"relationship {name}", ""))
 
-    print(f"\n  Converter result: {paint('32', 'success')} "
+    print(f"\n  Microsoft converter result: {paint('32', 'success')} "
           + paint("2", f"(exit 0, {len(raw_messages)} warnings - only those tell you)"))
 
 

@@ -1,0 +1,48 @@
+version: 0.3.0.dev0
+name: sales_demo_trip
+datasets:
+- name: sales_demo_trip
+  source: lschwarzlmueller_tests.ossie.sales_demo_trip
+  description: Orders with customers (Databricks -> Ossie -> Power BI trip)
+  fields:
+  - name: customer_id
+    expression:
+      sql: customer_id
+  - name: order_date
+    expression:
+      sql: order_date
+  - name: order_amount
+    expression:
+      sql: order_amount
+  - name: customer_key
+    expression:
+      sql: customer_key
+  - name: customer_segment
+    expression:
+      sql: customer_segment
+    description: enterprise or smb
+  metrics:
+  - name: total_revenue
+    expression:
+      sql: SUM(order_amount)
+      dialects:
+      - dialect: DATABRICKS
+        expression: MEASURE(source.total_revenue)
+    description: Total revenue across all orders
+    ai_context:
+      synonyms:
+      - revenue
+      - sales
+  - name: enterprise_revenue
+    expression:
+      sql: SUM(order_amount) FILTER(WHERE customer_segment = 'enterprise')
+      dialects:
+      - dialect: DATABRICKS
+        expression: MEASURE(source.enterprise_revenue)
+    description: Revenue from enterprise customers only
+  - name: revenue_running_total
+    expression:
+      dialects:
+      - dialect: DATABRICKS
+        expression: MEASURE(source.revenue_running_total)
+    description: Cumulative revenue up to each order date
