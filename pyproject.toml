@@ -26,16 +26,14 @@ packages = ["src/common"]
 # uv refuses two different URLs for the same package. Bumping the one
 # ossie-converters rev below bumps core to the version upstream tests against.
 #
-# apache-ossie-databricks stays on an old apache/ossie commit on purpose: only
-# databricks_python_deprecated still uses it, and it accepts 0.2.0.dev0 models
-# only. It depends on nothing but pyyaml, so it does not conflict with the newer
-# apache-ossie. Everything else uses the Java converter
+# apache-ossie-databricks writes one metric view per dataset, without joins. The
+# demos that read a joined metric view use the pinned Java converter instead
 # (databricks/build_converter.sh).
 apache-ossie = { git = "https://github.com/apache/ossie-converters", subdirectory = "ossie/python", rev = "93fb75c47c294db811ba49e5832c0cb857704306" }
 apache-ossie-dbt = { git = "https://github.com/apache/ossie-converters", subdirectory = "dbt", rev = "93fb75c47c294db811ba49e5832c0cb857704306" }
 apache-ossie-snowflake = { git = "https://github.com/apache/ossie-converters", subdirectory = "snowflake", rev = "93fb75c47c294db811ba49e5832c0cb857704306" }
 apache-ossie-microsoft = { git = "https://github.com/apache/ossie-converters", subdirectory = "microsoft", rev = "93fb75c47c294db811ba49e5832c0cb857704306" }
-apache-ossie-databricks = { git = "https://github.com/apache/ossie", subdirectory = "converters/databricks", rev = "a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
+apache-ossie-databricks = { git = "https://github.com/apache/ossie-converters", subdirectory = "databricks", rev = "93fb75c47c294db811ba49e5832c0cb857704306" }
 
 [dependency-groups]
 dev = [

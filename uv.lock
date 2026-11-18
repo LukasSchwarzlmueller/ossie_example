@@ -40,10 +40,12 @@ dependencies = [
 
 [[package]]
 name = "apache-ossie-databricks"
-version = "0.2.0.dev0"
-source = { git = "https://github.com/apache/ossie?subdirectory=converters%2Fdatabricks&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c#a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" }
+version = "0.3.0.dev0"
+source = { git = "https://github.com/apache/ossie-converters?subdirectory=databricks&rev=93fb75c47c294db811ba49e5832c0cb857704306#93fb75c47c294db811ba49e5832c0cb857704306" }
 dependencies = [
+    { name = "jsonschema" },
     { name = "pyyaml" },
+    { name = "sqlglot" },
 ]
 
 [[package]]
@@ -882,7 +884,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "apache-ossie", git = "https://github.com/apache/ossie-converters?subdirectory=ossie%2Fpython&rev=93fb75c47c294db811ba49e5832c0cb857704306" },
-    { name = "apache-ossie-databricks", git = "https://github.com/apache/ossie?subdirectory=converters%2Fdatabricks&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" },
+    { name = "apache-ossie-databricks", git = "https://github.com/apache/ossie-converters?subdirectory=databricks&rev=93fb75c47c294db811ba49e5832c0cb857704306" },
     { name = "snowflake-connector-python", specifier = ">=4.7.2" },
 ]
 
@@ -1355,11 +1357,11 @@ wheels = [
 
 [[package]]
 name = "sqlglot"
-version = "30.17.0"
+version = "30.33.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/56/d4/da49abcc81beebbb25f29ddf87f2980c63c949569d7f2da40c06d95fa415/sqlglot-30.17.0.tar.gz", hash = "sha256:2d6b8def93304fa300f4d20f48e3909e7f436fda56ca1fafd8975f6c561ef62c", size = 5999019 }
+sdist = { url = "https://files.pythonhosted.org/packages/f6/4d/ce64044d87620a6cfeb0de779359400f29730ad169d7f804c050f8de7c5e/sqlglot-30.33.0.tar.gz", hash = "sha256:9c007e0471c93e778d8613f25853543b959a3f793d9dadf1341b3d6bd53246a8", size = 6253207 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f3/bc/2a07cef49046e6cf5d1a8b1de553aaef8491b4170dbfe254c8687c764408/sqlglot-30.17.0-py3-none-any.whl", hash = "sha256:84435ac283a60173da31b5fd7d11a725037a1c3fd6ed1e21fb065de74ddb579f", size = 741795 },
+    { url = "https://files.pythonhosted.org/packages/32/b2/564252e22f8e0a383adee6b38afc4a0e38fccbc4046b5c36a387a2308f23/sqlglot-30.33.0-py3-none-any.whl", hash = "sha256:a5b279fe7397a9fb6cdd0274a13a5fcee0fa83ac6ff617083f1f2832031e90bc", size = 829420 },
 ]
 
 [[package]]

@@ -14,21 +14,21 @@ fixes it needed.
 | Folder | What it does | Needs | Result |
 |---|---|---|---|
 | [dbt/](dbt/README.md) | Ossie -> dbt semantic manifest, queried with MetricFlow | nothing, runs locally on DuckDB | works with a small patch step |
-| [databricks/](databricks/README.md) | Ossie -> Unity Catalog Metric View | JDK 21+, Maven; a workspace to deploy | clean |
+| [databricks/](databricks/README.md) | Ossie -> Unity Catalog Metric Views, one per table | a workspace to deploy | works, no joins |
 | [snowflake/](snowflake/README.md) | Ossie -> Snowflake semantic view | an account to deploy | works with one deploy-time fix |
 | [microsoft/](microsoft/README.md) | Ossie -> Power BI / Fabric semantic model (Direct Lake) | .NET and TOM for TMDL; a workspace to deploy | clean |
 | [duckdb/](duckdb/README.md) | queries the Ossie file directly, no conversion | nothing, runs locally (DuckDB 1.5.6+) | works |
-| [powerbi_databricks/](powerbi_databricks/README.md) | Power BI model -> Ossie -> Metric View | .NET and TOM for TMDL | dimensions and joins only, DAX measures are dropped |
-| [roundtrip_databricks/](roundtrip_databricks/README.md) | Metric View -> Ossie -> Metric View | the Databricks export | content survives |
+| [powerbi_databricks/](powerbi_databricks/README.md) | Power BI model -> Ossie -> Metric View | .NET and TOM for TMDL | dimensions only, one view per table; DAX measures are dropped |
+| [roundtrip_databricks/](roundtrip_databricks/README.md) | Metric View -> Ossie -> Metric View | JDK 21+, Maven | content survives |
 | [roundtrip_powerbi/](roundtrip_powerbi/README.md) | Ossie -> Fabric semantic model -> Ossie, through a real workspace | a Fabric workspace, `az` login | tables, relationship and metrics survive; labels, datatypes and SQL dialects are lost |
-| [databricks_python_deprecated/](databricks_python_deprecated/README.md) | the old Python Databricks converter | nothing | kept for reference |
 
 ## Ossie version
 
 Models are on the unreleased spec `0.3.0.dev0`, with the converters pinned in `pyproject.toml`.
-Two exceptions: `databricks_python_deprecated/` stays on `0.2.0.dev0`, and the Java Databricks converter
-still writes the older `custom_extensions` form, which `src/common/databricks_converter.py` rewrites
-as `nonportable_extensions` for the Microsoft converter.
+`databricks/` and `powerbi_databricks/` use upstream's Python Databricks converter. `databricks_to_powerbi/`,
+`databricks_powerbi/` and `roundtrip_databricks/` read joined Metric Views, which only the pinned Java
+converter can do. It still writes the older `custom_extensions` form, which
+`src/common/databricks_converter.py` rewrites as `nonportable_extensions` for the Microsoft converter.
 
 ## Setup
 
@@ -82,8 +82,8 @@ Databricks, Snowflake and DuckDB return the same numbers.
 
 - `<target>/export_*.py`: offline conversion, writes the target's native file.
 - `<target>/deploy_to_*.py`: deploys against a real workspace or account.
-- `src/common/`: shared `.env` loading and the Java converter wrapper.
-- `pyproject.toml`: pins the `apache-ossie-*` packages to one [apache/ossie-converters](https://github.com/apache/ossie-converters) commit (core comes from its `ossie/` submodule); only the old Python Databricks converter stays on an older [apache/ossie](https://github.com/apache/ossie) commit.
+- `src/common/`: shared `.env` loading and the Databricks converter wrappers.
+- `pyproject.toml`: pins the `apache-ossie-*` packages to one [apache/ossie-converters](https://github.com/apache/ossie-converters) commit (core comes from its `ossie/` submodule).
 
 ## Further reading
 

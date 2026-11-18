@@ -1,8 +1,8 @@
 """Deploy the Power BI -> Metric View results to Databricks, one set per input format.
 
 For each of tmsl/tmdl: tables <way>_customers / <way>_orders (same demo rows as
-databricks/deploy_to_databricks.py) and Metric View <way>_<view name>, created from
-powerbi_databricks/metric_view_from_<way>.yaml. Run export_metric_view.py first.
+databricks/deploy_to_databricks.py) and Metric Views <way>_<view name>_<dataset>, created from
+powerbi_databricks/metric_view_from_<way>_<dataset>.yaml. Run export_metric_view.py first.
 
     uv run powerbi_databricks/deploy_to_databricks.py [--dry-run]    # --dry-run prints the SQL
 
@@ -33,7 +33,7 @@ SELECT * FROM (VALUES
     (103, 2, DATE'2026-02-11', 40.00),
     (104, 3, DATE'2026-03-01', 610.25)
 ) AS t(order_id, customer_id, order_date, order_amount)"""
-VIEW = "CREATE OR REPLACE VIEW {q}.{way}_{view} WITH METRICS LANGUAGE YAML AS $$\n{yaml}\n$$"
+VIEW = "CREATE OR REPLACE VIEW {q}.{way}_{view}_{dataset} WITH METRICS LANGUAGE YAML AS $$\n{yaml}\n$$"
 
 
 def main() -> None:
@@ -65,13 +65,18 @@ def main() -> None:
             raise SystemExit(f"error ({error.error_code}): {error.message}\n\nStatement was:\n{statement}")
 
     for way in ("tmsl", "tmdl"):
-        yaml_text = (HERE / f"metric_view_from_{way}.yaml").read_text()
-        if not str(yaml.safe_load(yaml_text).get("source", "")).startswith(f"{q}.{way}_"):
-            raise SystemExit(f"metric_view_from_{way}.yaml isn't qualified for {q} - run export_metric_view.py first")
-        print(f"-- [{way}] tables {q}.{way}_customers / {way}_orders, Metric View {q}.{way}_{view}")
+        paths = sorted(HERE.glob(f"metric_view_from_{way}_*.yaml"))
+        if not paths:
+            raise SystemExit(f"no metric_view_from_{way}_*.yaml - run export_metric_view.py first")
+        print(f"-- [{way}] tables {q}.{way}_customers / {way}_orders, Metric Views {q}.{way}_{view}_<dataset>")
         run(CUSTOMERS.format(q=q, way=way))
         run(ORDERS.format(q=q, way=way))
-        run(VIEW.format(q=q, way=way, view=view, yaml=yaml_text))
+        for path in paths:
+            yaml_text = path.read_text()
+            if not str(yaml.safe_load(yaml_text).get("source", "")).startswith(f"{q}.{way}_"):
+                raise SystemExit(f"{path.name} isn't qualified for {q} - run export_metric_view.py first")
+            dataset = path.stem.removeprefix(f"metric_view_from_{way}_")
+            run(VIEW.format(q=q, way=way, view=view, dataset=dataset, yaml=yaml_text))
 
 
 if __name__ == "__main__":

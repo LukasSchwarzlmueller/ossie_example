@@ -1,8 +1,7 @@
 # Databricks Metric View -> Apache Ossie -> Power BI (live demo)
 
-`metric_view.yaml` is a copy of `databricks/metric_view.yaml` plus one filtered measure
-(`enterprise_revenue`). It is kept separate because `databricks/metric_view.yaml` is generated
-by `databricks/export_metric_view.py` and checked byte-for-byte by `roundtrip_databricks/`.
+`metric_view.yaml` is a joined Metric View with one filtered measure (`enterprise_revenue`). It needs
+the Java converter (`databricks/build_converter.sh`) and is also the input of `roundtrip_databricks/`.
 
 ```bash
 uv run python -m common.databricks_converter databricks_powerbi/metric_view.yaml -o databricks_powerbi/db_ossie.yaml

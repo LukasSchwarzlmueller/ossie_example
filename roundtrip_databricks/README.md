@@ -5,7 +5,7 @@ Metric View -> Ossie -> Metric View, to check that nothing is lost.
 ## Run
 
 ```bash
-uv run databricks/export_metric_view.py
+databricks/build_converter.sh   # once; needs JDK 21+, Maven, git
 uv run roundtrip_databricks/run_roundtrip.py
 ```
 

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Build the Java Ossie -> Databricks converter at a pinned apache/ossie-converters commit.
-# The pin is the last commit that has the Java converter: upstream replaced it on 2026-11-18 (#218)
-# with a Python one that writes one metric view per dataset and no joins.
+# Only needed by databricks_to_powerbi, databricks_powerbi and roundtrip_databricks. The pin is the
+# last commit with the Java converter: upstream replaced it on 2026-11-18 (#218) with a Python one
+# that has no joins, so it cannot read a joined metric view back into Ossie.
 # Needs git, JDK 21+ and Maven. To update the converter, change CONVERTERS_REV and rerun.
 set -euo pipefail
 

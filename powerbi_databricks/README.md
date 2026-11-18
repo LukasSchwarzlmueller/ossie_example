@@ -1,6 +1,6 @@
 # Power BI -> Databricks Metric View
 
-Converts the Fabric export in `sample/` (Direct Lake) into a Databricks Metric View via Apache
+Converts the Fabric export in `sample/` (Direct Lake) into Databricks Metric Views via Apache
 Ossie, from either format:
 
 ```bash
@@ -14,12 +14,10 @@ uv run powerbi_databricks/export_metric_view.py --from tmdl  # or --from tmsl; -
 | TMDL | `sample/TMDL/definition/` - read via Microsoft TOM (needs the `tom` extra, `.tom/assemblies` and .NET), because `ossie-microsoft` has no folder input |
 
 Catalog/schema come from `DATABRICKS_CATALOG` / `DATABRICKS_SCHEMA` (defaults `ossi` / `test`).
-Both ways give the same result: the `orders -> customers` join and 6 dimensions, **no measures**.
+Both ways give the same result: one Metric View per table, **no join and no measures**.
 
-Two fix-ups are needed before the Databricks export accepts the model:
-1. `dbo.orders` is not a 3-part name, so the source becomes `<catalog>.<schema>.<tmsl|tmdl>_orders`.
-2. `customer_id` exists in both tables and dimension names must be unique, so the `customers`
-   copy is dropped (the join still uses it).
+One fix-up is needed before the Databricks export accepts the model: `dbo.orders` is not a 3-part
+name, so the source becomes `<catalog>.<schema>.<tmsl|tmdl>_orders`.
 
 **Measures are left out for now.** Power BI measures are DAX, `ossie-databricks` needs SQL, and
 neither converter translates between them, so all 3 (`Total Revenue`, `Order Count`,
@@ -50,9 +48,6 @@ uv run powerbi_databricks/deploy_to_databricks.py             # run it (same .en
 ```
 
 Creates the prefixed tables (same demo rows as `databricks/deploy_to_databricks.py`) and one Metric
-View per way: `tmsl_sales_demo_metrics` and `tmdl_sales_demo_metrics`
-(`DATABRICKS_METRIC_VIEW_NAME` replaces `sales_demo_metrics`). Run the export first.
-
-Verified on a real workspace (2026-09-20): Databricks accepts both Metric Views even without
-measures, and dimension queries work, e.g. `SELECT customer_segment, count(*) FROM
-<catalog>.<schema>.tmsl_sales_demo_metrics GROUP BY customer_segment`.
+View per way and table, such as `tmsl_sales_demo_metrics_orders` and
+`tmsl_sales_demo_metrics_customers` (`DATABRICKS_METRIC_VIEW_NAME` replaces `sales_demo_metrics`).
+Run the export first.

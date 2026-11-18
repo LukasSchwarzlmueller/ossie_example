@@ -1,7 +1,7 @@
 """Not part of the talk - a side check that the Java converter's Metric View
 -> Ossie -> Metric View round trip is lossless. Anything
 Ossie has no native field for is preserved in a DATABRICKS extension
-instead of being dropped. Run export_metric_view.py first.
+instead of being dropped. Uses the joined view in databricks_powerbi/.
 """
 
 import difflib
@@ -12,7 +12,7 @@ from common.databricks_converter import metric_view_to_ossie, ossie_to_metric_vi
 from common.env import REPO_ROOT
 
 ROUNDTRIP_DIR = REPO_ROOT / "roundtrip_databricks"
-ORIGINAL_MV = REPO_ROOT / "databricks" / "metric_view.yaml"
+ORIGINAL_MV = REPO_ROOT / "databricks_powerbi" / "metric_view.yaml"
 ROUNDTRIPPED_OSSIE = ROUNDTRIP_DIR / "ossie" / "orders_customers.yaml"
 ROUNDTRIPPED_MV = ROUNDTRIP_DIR / "metric_view.yaml"
 
@@ -25,11 +25,6 @@ def content(metric_view: str) -> dict:
 
 
 def main() -> None:
-    if not ORIGINAL_MV.exists():
-        raise SystemExit(
-            "databricks/metric_view.yaml not found - run "
-            "'uv run databricks/export_metric_view.py' first."
-        )
     original_mv = ORIGINAL_MV.read_text()
 
     print("Step 1: Metric View -> Ossie (Java converter, import)")

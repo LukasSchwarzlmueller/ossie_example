@@ -1,7 +1,7 @@
-"""Deploy the demo tables + Metric View to a real Databricks workspace.
+"""Deploy the demo tables + one Metric View per dataset to a real Databricks workspace.
 
 Needs DATABRICKS_CATALOG/DATABRICKS_SCHEMA to already exist (run
-export_metric_view.py first, which qualifies metric_view.yaml for the same
+export_metric_view.py first, which qualifies metric_views/ for the same
 catalog/schema) and a running SQL warehouse. Auth + warehouse ID come from
 .env - see .env.example.
 """
@@ -66,31 +66,35 @@ def main() -> None:
         """,
     )
 
-    metric_view_path = REPO_ROOT / "databricks" / "metric_view.yaml"
-    metric_view_yaml = metric_view_path.read_text()
-    if not str(yaml.safe_load(metric_view_yaml).get("source", "")).startswith(f"{qualified}."):
-        raise SystemExit(
-            f"databricks/metric_view.yaml isn't qualified for {qualified} - "
-            "run 'uv run python3 databricks/export_metric_view.py' first "
-            "(it reads the same DATABRICKS_CATALOG/DATABRICKS_SCHEMA from .env)."
-        )
+    metric_view_paths = sorted((REPO_ROOT / "databricks" / "metric_views").glob("*.yaml"))
+    if not metric_view_paths:
+        raise SystemExit("databricks/metric_views/ is empty - run 'uv run databricks/export_metric_view.py' first.")
+    for path in metric_view_paths:
+        metric_view_yaml = path.read_text()
+        if not str(yaml.safe_load(metric_view_yaml).get("source", "")).startswith(f"{qualified}."):
+            raise SystemExit(
+                f"databricks/metric_views/{path.name} isn't qualified for {qualified} - "
+                "run 'uv run databricks/export_metric_view.py' first "
+                "(it reads the same DATABRICKS_CATALOG/DATABRICKS_SCHEMA from .env)."
+            )
 
-    print(f"Creating Metric View {qualified}.{view_name}...")
-    run(
-        w,
-        warehouse_id,
-        f"""
-        CREATE OR REPLACE VIEW {qualified}.{view_name}
+        # Suffixed: a view named after its dataset would replace the table it reads.
+        print(f"Creating Metric View {qualified}.{view_name}_{path.stem}...")
+        run(
+            w,
+            warehouse_id,
+            f"""
+        CREATE OR REPLACE VIEW {qualified}.{view_name}_{path.stem}
         WITH METRICS
         LANGUAGE YAML
         AS $$
 {metric_view_yaml}
         $$
         """,
-    )
+        )
 
     print("Verifying what actually persisted (SHOW CREATE TABLE)...")
-    show_result = run(w, warehouse_id, f"SHOW CREATE TABLE {qualified}.{view_name}")
+    show_result = run(w, warehouse_id, f"SHOW CREATE TABLE {qualified}.{view_name}_orders")
     created_view_sql = show_result.result.data_array[0][0]
     if "synonyms:" not in created_view_sql:
         print("  WARNING: 'synonyms:' not found anywhere in the persisted view - see NOTES.md")
@@ -99,9 +103,9 @@ def main() -> None:
         print("  synonyms persisted correctly.")
 
     print("Done. Query it with:")
-    print("  SELECT customer_segment, MEASURE(total_revenue), MEASURE(avg_order_value)")
-    print(f"  FROM {qualified}.{view_name}")
-    print("  GROUP BY customer_segment")
+    print("  SELECT order_date, MEASURE(total_revenue), MEASURE(avg_order_value)")
+    print(f"  FROM {qualified}.{view_name}_orders")
+    print("  GROUP BY order_date")
 
 
 if __name__ == "__main__":

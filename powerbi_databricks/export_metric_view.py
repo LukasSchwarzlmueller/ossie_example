@@ -1,8 +1,9 @@
-"""Power BI semantic model (sample/) -> Databricks Metric View, from TMSL or TMDL.
+"""Power BI semantic model (sample/) -> Databricks Metric Views, from TMSL or TMDL.
 
     uv run powerbi_databricks/export_metric_view.py [--from tmsl|tmdl] [--warnings]
 
-Writes powerbi_databricks/metric_view_from_<tmsl|tmdl>.yaml (default: both). Tables are prefixed
+Writes powerbi_databricks/metric_view_from_<tmsl|tmdl>_<dataset>.yaml (default: both), one Metric
+View per table, without joins (the Python Databricks converter has none). Tables are prefixed
 with the input format (tmsl_orders, tmdl_orders, ...) so both can be deployed side by side.
 Power BI measures are DAX only and the Databricks converter needs SQL, and neither converter translates
 one into the other, so the measures are left out: dimensions only.
@@ -21,7 +22,7 @@ import yaml
 from ossie_microsoft.semantic_model_to_ossie import convert_semantic_model_to_ossie
 from ossie_microsoft.tom import _assembly_directory, _load_tom
 
-from common.databricks_converter import ossie_to_metric_view
+from common.databricks_converter import ossie_to_metric_views
 from common.env import REPO_ROOT, load_env_file
 
 HERE = REPO_ROOT / "powerbi_databricks"
@@ -41,7 +42,7 @@ def read_tmdl() -> dict:
 
 
 def strip_extensions(node) -> None:
-    """Power BI details mean nothing to Databricks, and the Java converter predates their new form."""
+    """Power BI details mean nothing to Databricks, and the pinned validator predates their new form."""
     if isinstance(node, dict):
         node.pop("nonportable_extensions", None)
         node = list(node.values())
@@ -53,12 +54,8 @@ def strip_extensions(node) -> None:
 def fix_up(ossie: dict, catalog: str, schema: str, way: str) -> None:
     """What the Databricks converter rejects in this model."""
     strip_extensions(ossie)
-    datasets = {d["name"]: d for d in ossie["datasets"]}
-    for d in datasets.values():  # `dbo.orders` -> 3-part `catalog.schema.tmsl_orders`
+    for d in ossie["datasets"]:  # `dbo.orders` -> 3-part `catalog.schema.tmsl_orders`
         d["source"] = f"{catalog}.{schema}.{way}_{d['source'].rsplit('.', 1)[-1]}"
-    for r in ossie["relationships"]:  # dimension names are global: drop the `to` copy of a join key
-        clash = {f["name"] for f in datasets[r["from"]]["fields"]} & set(r["to_columns"])
-        datasets[r["to"]]["fields"] = [f for f in datasets[r["to"]]["fields"] if f["name"] not in clash]
 
 
 def main() -> None:
@@ -77,17 +74,16 @@ def main() -> None:
             warnings.simplefilter("always")
             ossie = yaml.safe_load(convert_semantic_model_to_ossie(readers[way]()))
             fix_up(ossie, catalog, schema, way)
-            view_yaml, messages = ossie_to_metric_view(yaml.safe_dump(ossie, sort_keys=False))
+            views, messages = ossie_to_metric_views(yaml.safe_dump(ossie, sort_keys=False), catalog, schema)
         if args.warnings:
             print("\n".join(f"warning: {w.message}" for w in caught))
-            print(messages, end="")
-        output = HERE / f"metric_view_from_{way}.yaml"
-        output.write_text(view_yaml)
-        view = yaml.safe_load(view_yaml)
-        measures = len(view.get("measures", []))
-        print(f"Wrote {output.relative_to(REPO_ROOT)} (qualified for {catalog}.{schema}): "
-              f"{len(view['dimensions'])} dimensions, {measures} measures, "
-              f"{len(ossie['metrics']) - measures} DAX-only metrics dropped")
+            print("\n".join(messages))
+        dimensions = 0
+        for dataset, view_yaml in views.items():
+            (HERE / f"metric_view_from_{way}_{dataset}.yaml").write_text(view_yaml)
+            dimensions += len(yaml.safe_load(view_yaml).get("dimensions", []))
+        print(f"Wrote {len(views)} metric views for {way} (qualified for {catalog}.{schema}): "
+              f"{dimensions} dimensions, {len(ossie['metrics'])} DAX-only metrics dropped")
 
 
 if __name__ == "__main__":
