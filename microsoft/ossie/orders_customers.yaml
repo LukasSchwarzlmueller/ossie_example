@@ -1,4 +1,4 @@
-version: 0.2.0.dev0
+version: 0.3.0.dev0
 name: sales_demo
 description: Minimal orders/customers demo model for the OSI meetup talk
 datasets:
@@ -99,9 +99,9 @@ metrics:
     synonyms:
     - revenue
     - sales
-  custom_extensions:
+  nonportable_extensions:
   - vendor_name: POWER_BI
-    data: '{"table": "orders"}'
+    data: {"table": "orders"}
 - name: order_count
   expression:
     dialects:
@@ -111,9 +111,9 @@ metrics:
       expression: "COUNTROWS(orders)"
   description: Number of orders
   datatype: Integer
-  custom_extensions:
+  nonportable_extensions:
   - vendor_name: POWER_BI
-    data: '{"table": "orders"}'
+    data: {"table": "orders"}
 - name: avg_order_value
   expression:
     dialects:
@@ -127,6 +127,6 @@ metrics:
     - average order value
     - average purchase value
     instructions: This is the number the CEO checks every Monday.
-  custom_extensions:
+  nonportable_extensions:
   - vendor_name: POWER_BI
-    data: '{"table": "orders"}'
+    data: {"table": "orders"}

@@ -13,6 +13,8 @@ Needs the same .env as databricks/deploy_to_databricks.py. The Metric Views have
 import argparse
 import os
 
+import yaml
+
 from databricks.sdk import WorkspaceClient
 
 from common.env import REPO_ROOT, load_env_file
@@ -64,7 +66,7 @@ def main() -> None:
 
     for way in ("tmsl", "tmdl"):
         yaml_text = (HERE / f"metric_view_from_{way}.yaml").read_text()
-        if f"source: {q}.{way}_" not in yaml_text:
+        if not str(yaml.safe_load(yaml_text).get("source", "")).startswith(f"{q}.{way}_"):
             raise SystemExit(f"metric_view_from_{way}.yaml isn't qualified for {q} - run export_metric_view.py first")
         print(f"-- [{way}] tables {q}.{way}_customers / {way}_orders, Metric View {q}.{way}_{view}")
         run(CUSTOMERS.format(q=q, way=way))

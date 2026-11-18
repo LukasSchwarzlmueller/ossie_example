@@ -12,9 +12,9 @@ uv run roundtrip_databricks/run_roundtrip.py
 ## Findings
 
 - The content survives: the round-tripped `metric_view.yaml` parses to the same data as the original.
-- What Ossie has no field for (`rely.at_most_one_match`) is kept in `custom_extensions[DATABRICKS]` and restored.
-- The script still reports `Round trip MISMATCH`. It compares bytes, and the input now comes from the Java converter (quoted strings) while the round trip uses the old Python one (unquoted).
+- What Ossie has no field for (`rely.at_most_one_match`) is kept in a `DATABRICKS` extension and restored.
+- Both directions use the Java converter. The import regroups dimensions by dataset, so the script compares parsed content and ignores dimension order.
 
 ## Fixes needed
 
-- None to the converter. The script's byte comparison is out of date.
+- None.

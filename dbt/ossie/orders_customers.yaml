@@ -1,4 +1,4 @@
-version: 0.2.0.dev0
+version: 0.3.0.dev0
 name: sales_demo
 description: Minimal orders/customers demo model for the OSI meetup talk
 datasets:

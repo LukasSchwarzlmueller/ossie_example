@@ -11,7 +11,7 @@ uv run duckdb/query_metrics.py --sql    # print the generated SQL instead
 ```
 
 ```
-loaded sales_demo (0.2.0.dev0): 2 datasets, 7 fields, 1 relationship(s), 3 metrics
+loaded sales_demo (0.3.0.dev0): 2 datasets, 7 fields, 1 relationship(s), 3 metrics
 
 customer_segment    total_revenue   avg_order_value   order_count
 smb                         40.00            40.000             1

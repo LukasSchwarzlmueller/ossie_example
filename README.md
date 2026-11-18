@@ -23,6 +23,13 @@ fixes it needed.
 | [roundtrip_powerbi/](roundtrip_powerbi/README.md) | Ossie -> Fabric semantic model -> Ossie, through a real workspace | a Fabric workspace, `az` login | tables, relationship and metrics survive; labels, datatypes and SQL dialects are lost |
 | [databricks_python_deprecated/](databricks_python_deprecated/README.md) | the old Python Databricks converter | nothing | kept for reference |
 
+## Ossie version
+
+Models are on the unreleased spec `0.3.0.dev0`, with the converters pinned in `pyproject.toml`.
+Two exceptions: `databricks_python_deprecated/` stays on `0.2.0.dev0`, and the Java Databricks converter
+still writes the older `custom_extensions` form, which `src/common/databricks_converter.py` rewrites
+as `nonportable_extensions` for the Microsoft converter.
+
 ## Setup
 
 Needs [`uv`](https://docs.astral.sh/uv/), which manages the Python version

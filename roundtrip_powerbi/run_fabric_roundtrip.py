@@ -201,12 +201,12 @@ def reason(obj: str, attr: str, kind: str) -> str:
     if attr == "source":
         return "Direct Lake: the lakehouse is in the model connection (see model above)"
     if obj.startswith("relationship") and attr == "name":
-        return "Power BI relationships have no real name, so it is built from the columns (original kept in custom_extensions)"
+        return "Power BI relationships have no real name, so it is built from the columns (original kept in nonportable_extensions)"
     if attr.endswith(" expression"):
         if is_field:
             return "Direct Lake: no calculated columns, falls back to the plain column"
         if kind == "+":
-            return "translated from the SQL version; the SQL is kept in custom_extensions"
+            return "translated from the SQL version; the SQL is kept in nonportable_extensions"
         if attr.split()[0] in SQL_DIALECTS:
             return "Power BI keeps the DAX version only"
     return ""
@@ -222,9 +222,9 @@ _Dumper.add_representer(str, lambda dumper, value: dumper.represent_scalar(
 
 def model_extension(ossie: str) -> str | None:
     """The model-level Power BI extension (connection, culture, ...) as readable YAML."""
-    for ext in yaml.safe_load(ossie).get("custom_extensions", []):
+    for ext in yaml.safe_load(ossie).get("nonportable_extensions", []):
         if ext.get("vendor_name") == "POWER_BI":
-            data = json.loads(ext["data"])
+            data = ext["data"]
             for expression in data.get("expressions", []):  # M code is stored one line per item
                 if isinstance(expression.get("expression"), list):
                     expression["expression"] = "\n".join(expression["expression"])
@@ -235,12 +235,12 @@ def model_extension(ossie: str) -> str | None:
 def show_changes(a: str, b: str) -> None:
     """Every change that matters, per object, as -/+ lines with the reason next to it.
 
-    Left out: reordering, re-quoting, and the Power BI details stored in custom_extensions.
+    Left out: reordering, re-quoting, and the Power BI details stored in nonportable_extensions.
     """
     before, after = flatten(yaml.safe_load(a)), flatten(yaml.safe_load(b))
     color = sys.stdout.isatty() or bool(os.environ.get("FORCE_COLOR"))
     paint = (lambda code, text: f"\033[{code}m{text}\033[0m") if color else (lambda code, text: text)
-    is_ext = lambda key: key[1].startswith("custom_extensions")
+    is_ext = lambda key: key[1].startswith("nonportable_extensions")
 
     rows: dict[str, list[tuple[str, str, object]]] = {}  # object -> [(-/+, attribute, value)]
     for key in dict.fromkeys([*before, *after]):  # file order, before first
@@ -260,7 +260,7 @@ def show_changes(a: str, b: str) -> None:
     width = max((len(t) for _, _, t, _ in lines), default=0)
     if extension := model_extension(b):
         print(f"\n  {paint('1', 'model')}")
-        print(f"    {paint('32', '+ custom_extensions POWER_BI:')}  "
+        print(f"    {paint('32', '+ nonportable_extensions POWER_BI:')}  "
               + paint("2", "Power BI model settings; the lakehouse connection (workspace ID / lakehouse ID) is in DatabaseQuery"))
         for line in extension.splitlines():
             print(paint("32", f"        {line}"))
@@ -275,7 +275,7 @@ def show_changes(a: str, b: str) -> None:
         print(f"    {paint('31' if kind == '-' else '32', line)}{paint('2', note)}")
     ext_objects = sorted({k[0] for k in after if is_ext(k) and before.get(k) != after[k]} - {"model"})
     print(paint("2", f"\n  Not shown: reordering, re-quoting, and Power BI details kept in "
-                     f"custom_extensions on {len(ext_objects)} more objects. --diff prints the raw diff."))
+                     f"nonportable_extensions on {len(ext_objects)} more objects. --diff prints the raw diff."))
 
 
 def show_diff(a: str, b: str, a_name: str, b_name: str) -> None:

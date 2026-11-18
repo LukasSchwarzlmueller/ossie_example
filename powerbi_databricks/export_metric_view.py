@@ -4,7 +4,7 @@
 
 Writes powerbi_databricks/metric_view_from_<tmsl|tmdl>.yaml (default: both). Tables are prefixed
 with the input format (tmsl_orders, tmdl_orders, ...) so both can be deployed side by side.
-Power BI measures are DAX only and ossie-databricks needs SQL, and neither converter translates
+Power BI measures are DAX only and the Databricks converter needs SQL, and neither converter translates
 one into the other, so the measures are left out: dimensions only.
 
 ossie-microsoft can't read a TMDL folder, so that way goes through Microsoft's TOM (`tom` extra,
@@ -18,10 +18,10 @@ import os
 import warnings
 
 import yaml
-from ossie_databricks.ossie_to_metric_view import convert_ossie_to_metric_view
 from ossie_microsoft.semantic_model_to_ossie import convert_semantic_model_to_ossie
 from ossie_microsoft.tom import _assembly_directory, _load_tom
 
+from common.databricks_converter import ossie_to_metric_view
 from common.env import REPO_ROOT, load_env_file
 
 HERE = REPO_ROOT / "powerbi_databricks"
@@ -40,8 +40,19 @@ def read_tmdl() -> dict:
     return json.loads(str(tom.JsonSerializer.SerializeDatabase(db)))
 
 
+def strip_extensions(node) -> None:
+    """Power BI details mean nothing to Databricks, and the Java converter predates their new form."""
+    if isinstance(node, dict):
+        node.pop("nonportable_extensions", None)
+        node = list(node.values())
+    if isinstance(node, list):
+        for item in node:
+            strip_extensions(item)
+
+
 def fix_up(ossie: dict, catalog: str, schema: str, way: str) -> None:
-    """Two things ossie-databricks rejects in this model."""
+    """What the Databricks converter rejects in this model."""
+    strip_extensions(ossie)
     datasets = {d["name"]: d for d in ossie["datasets"]}
     for d in datasets.values():  # `dbo.orders` -> 3-part `catalog.schema.tmsl_orders`
         d["source"] = f"{catalog}.{schema}.{way}_{d['source'].rsplit('.', 1)[-1]}"
@@ -66,9 +77,10 @@ def main() -> None:
             warnings.simplefilter("always")
             ossie = yaml.safe_load(convert_semantic_model_to_ossie(readers[way]()))
             fix_up(ossie, catalog, schema, way)
-            view_yaml = convert_ossie_to_metric_view(yaml.safe_dump(ossie, sort_keys=False))
+            view_yaml, messages = ossie_to_metric_view(yaml.safe_dump(ossie, sort_keys=False))
         if args.warnings:
             print("\n".join(f"warning: {w.message}" for w in caught))
+            print(messages, end="")
         output = HERE / f"metric_view_from_{way}.yaml"
         output.write_text(view_yaml)
         view = yaml.safe_load(view_yaml)

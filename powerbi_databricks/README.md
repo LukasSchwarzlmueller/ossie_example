@@ -40,7 +40,7 @@ Tables are prefixed with the input format, so both ways can live in one schema: 
   name, which is the case for this Fabric export (`tom.py` only recognizes `database <name>`).
 - **Sample data:** the OneLake workspace and lakehouse IDs in `sample/` were replaced with
   placeholders. The Ossie output carries the whole `DirectLake - raw` M expression in its
-  `custom_extensions`, so publishing an unsanitized export would publish those IDs.
+  `nonportable_extensions`, so publishing an unsanitized export would publish those IDs.
 
 ## Deploy to Databricks
 

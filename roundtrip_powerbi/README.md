@@ -35,4 +35,4 @@ Ossie -> Fabric semantic model -> Ossie, through a real Fabric workspace.
    - only DAX survives: the SQL dialects are gone
    - Fabric restriction: Direct Lake allows no calculated columns, so `customer_name` loses `UPPER(...)`
 5. **Takeaway:** tables, relationship, metrics and AI context survive the round trip
-   through the real service. Vendor-specific details are kept in `custom_extensions`.
+   through the real service. Vendor-specific details are kept in `nonportable_extensions`.

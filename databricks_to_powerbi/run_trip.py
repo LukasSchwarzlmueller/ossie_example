@@ -18,7 +18,7 @@ FIXES - everything happens in the Ossie file, the converters stay as they are:
   - relationship keys: the Databricks import writes the physical column (customer_id) into the
     relationship, but the field is named customer_key -> point the relationship at the field
   - DAX from fixes.yaml as a second dialect for measures that don't translate from SQL
-  - Databricks `format` (kept in custom_extensions) -> Power BI formatString
+  - Databricks `format` (kept in nonportable_extensions) -> Power BI formatString
   - column types from fixes.yaml: a Metric View has none, and Fabric refuses the model without
 
     uv run databricks_to_powerbi/run_trip.py               # real: from Databricks, into Fabric
@@ -39,7 +39,6 @@ import json
 import os
 import re
 import shutil
-import subprocess
 import textwrap
 import sys
 import warnings
@@ -48,15 +47,12 @@ import yaml
 
 from ossie_microsoft import convert_ossie_to_semantic_model
 
+from common.databricks_converter import metric_view_to_ossie, to_nonportable_extensions
 from common.env import REPO_ROOT, load_env_file
 
 HERE = REPO_ROOT / "databricks_to_powerbi"
 OUT = HERE / "output"
 PLACEHOLDER = "__catalog__.__schema__"
-JAR_DIRS = [  # where the converter jar has lived over time
-    REPO_ROOT / ".ossie" / "converters" / "databricks" / "java" / "target",
-    REPO_ROOT / ".ossie-converters" / "databricks" / "java" / "target",
-]
 CURRENCY = {"EUR": "€", "USD": "$", "GBP": "£", "CHF": "CHF "}
 POWERBI = "https://analysis.windows.net/powerbi/api"
 
@@ -112,17 +108,6 @@ def refresh(token: str, workspace_id: str, model_id: str) -> str:
         return f"failed ({e.code}): {e.read().decode()[:300]}"
 
 
-def find_jar() -> str:
-    if jar := os.environ.get("OSSIE_DATABRICKS_JAR"):
-        return jar
-    for folder in JAR_DIRS:
-        jars = [j for j in sorted(folder.glob("ossie-databricks-converter-*.jar"))
-                if not j.name.endswith(("-sources.jar", "-javadoc.jar"))]
-        if jars:
-            return str(jars[0])
-    raise SystemExit("Databricks converter jar not found - run databricks/build_converter.sh")
-
-
 # --- Ossie helpers ---------------------------------------------------------------------------
 
 def dialects(obj: dict) -> list[dict]:
@@ -130,16 +115,16 @@ def dialects(obj: dict) -> list[dict]:
 
 
 def stash(obj: dict, vendor: str) -> dict:
-    for ext in obj.get("custom_extensions", []):
+    for ext in obj.get("nonportable_extensions", []):
         if ext.get("vendor_name") == vendor:
-            return json.loads(ext["data"])
+            return ext["data"]
     return {}
 
 
 def set_stash(obj: dict, vendor: str, data: dict) -> None:
-    exts = [e for e in obj.get("custom_extensions", []) if e.get("vendor_name") != vendor]
-    exts.append({"vendor_name": vendor, "data": json.dumps(data)})
-    obj["custom_extensions"] = exts
+    exts = [e for e in obj.get("nonportable_extensions", []) if e.get("vendor_name") != vendor]
+    exts.append({"vendor_name": vendor, "data": data})
+    obj["nonportable_extensions"] = exts
 
 
 def plain_column(field: dict) -> str | None:
@@ -477,17 +462,12 @@ def main() -> None:
     print(paint("2", f"     {len(view.get('measures', []))} measures · {len(view.get('dimensions', []))} columns · "
                      f"{joins} join{'s' if joins != 1 else ''}"))
     print("  ② Databricks -> Ossie                  " + paint("2", "Databricks converter"))
-    result = subprocess.run(
-        ["java", "-jar", find_jar(), "import", str(OUT / "metric_view.yaml"), "-o", str(OUT / "ossie.yaml")],
-        capture_output=True, text=True,
-    )
-    if result.returncode != 0:
-        raise SystemExit(f"Databricks import failed:\n{result.stdout}{result.stderr}")
+    ossie_text, _ = metric_view_to_ossie(view_yaml)
 
     # 2. "Mirroring": same tables, now read from OneLake
-    ossie_text = (OUT / "ossie.yaml").read_text().replace(f'"{uc}.', f'"{onelake}.')
-    (OUT / "ossie.yaml").write_text(ossie_text)
-    raw_ossie = yaml.safe_load(ossie_text)
+    ossie_text = ossie_text.replace(f'"{uc}.', f'"{onelake}.')
+    raw_ossie = to_nonportable_extensions(yaml.safe_load(ossie_text))
+    (OUT / "ossie.yaml").write_text(yaml.safe_dump(raw_ossie, sort_keys=False, allow_unicode=True))
 
     # 3. Fixes in Ossie
     fixed_ossie = copy.deepcopy(raw_ossie)
@@ -571,7 +551,7 @@ def main() -> None:
     wanted = sum(1 for d in raw_ossie["datasets"] for f in d.get("fields", []) if stash(f, "DATABRICKS").get("format")) \
         + sum(1 for m in raw_ossie.get("metrics", []) if stash(m, "DATABRICKS").get("format"))
     if wanted:
-        line("lost", f"{wanted} formats", "dropped", "only kept in the DATABRICKS custom_extensions")
+        line("lost", f"{wanted} formats", "dropped", "only kept in the DATABRICKS nonportable_extensions")
         if not args.raw and fix.formats():
             fixed(f"{fix.formats()} formatStrings", notes.get("formats", ""))
 

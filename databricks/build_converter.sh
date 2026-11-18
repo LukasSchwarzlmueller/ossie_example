@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Build the Java Ossie -> Databricks converter at a pinned apache/ossie-converters commit.
+# The pin is the last commit that has the Java converter: upstream replaced it on 2026-11-18 (#218)
+# with a Python one that writes one metric view per dataset and no joins.
 # Needs git, JDK 21+ and Maven. To update the converter, change CONVERTERS_REV and rerun.
 set -euo pipefail
 
-CONVERTERS_REV=811149647ef280b652a03efab112fa937372c21d
+CONVERTERS_REV=6f91f23dbfa6a9c5fad05242860ee4db20767f49
 HERE="$(cd "$(dirname "$0")" && pwd)"
 DIR="$HERE/../.ossie-converters"
 

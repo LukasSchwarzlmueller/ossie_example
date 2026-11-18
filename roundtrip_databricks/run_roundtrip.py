@@ -1,22 +1,27 @@
-"""Not part of the talk - a side check that ossie-databricks' Metric View
--> Ossie -> Metric View round trip is lossless (byte-for-byte). Anything
-Ossie has no native field for is preserved via
-`custom_extensions[DATABRICKS]` instead of being dropped. Run
-export_metric_view.py first.
+"""Not part of the talk - a side check that the Java converter's Metric View
+-> Ossie -> Metric View round trip is lossless. Anything
+Ossie has no native field for is preserved in a DATABRICKS extension
+instead of being dropped. Run export_metric_view.py first.
 """
 
 import difflib
-import warnings
 
-from ossie_databricks.metric_view_to_ossie import convert_metric_view_to_ossie
-from ossie_databricks.ossie_to_metric_view import convert_ossie_to_metric_view
+import yaml
 
+from common.databricks_converter import metric_view_to_ossie, ossie_to_metric_view
 from common.env import REPO_ROOT
 
 ROUNDTRIP_DIR = REPO_ROOT / "roundtrip_databricks"
 ORIGINAL_MV = REPO_ROOT / "databricks" / "metric_view.yaml"
 ROUNDTRIPPED_OSSIE = ROUNDTRIP_DIR / "ossie" / "orders_customers.yaml"
 ROUNDTRIPPED_MV = ROUNDTRIP_DIR / "metric_view.yaml"
+
+
+def content(metric_view: str) -> dict:
+    """The parsed view. The import regroups dimensions by dataset, so their order is not compared."""
+    view = yaml.safe_load(metric_view)
+    view["dimensions"] = sorted(view.get("dimensions", []), key=lambda d: d["name"])
+    return view
 
 
 def main() -> None:
@@ -27,23 +32,19 @@ def main() -> None:
         )
     original_mv = ORIGINAL_MV.read_text()
 
-    print("Step 1: Metric View -> Ossie (convert_metric_view_to_ossie)")
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        roundtripped_ossie = convert_metric_view_to_ossie(original_mv)
+    print("Step 1: Metric View -> Ossie (Java converter, import)")
+    roundtripped_ossie, _ = metric_view_to_ossie(original_mv)
 
-    print("Step 2: Ossie -> Metric View again (convert_ossie_to_metric_view)")
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        roundtripped_mv = convert_ossie_to_metric_view(roundtripped_ossie)
+    print("Step 2: Ossie -> Metric View again (Java converter, export)")
+    roundtripped_mv, _ = ossie_to_metric_view(roundtripped_ossie)
 
     ROUNDTRIPPED_OSSIE.parent.mkdir(parents=True, exist_ok=True)
     ROUNDTRIPPED_OSSIE.write_text(roundtripped_ossie)
     ROUNDTRIPPED_MV.write_text(roundtripped_mv)
     print(f"Wrote {ROUNDTRIPPED_OSSIE.relative_to(REPO_ROOT)}, {ROUNDTRIPPED_MV.relative_to(REPO_ROOT)}")
 
-    if original_mv == roundtripped_mv:
-        print("\nRound trip OK: original and round-tripped metric_view.yaml are byte-for-byte identical.")
+    if content(original_mv) == content(roundtripped_mv):
+        print("\nRound trip OK: original and round-tripped metric_view.yaml have the same content.")
     else:
         diff = "".join(difflib.unified_diff(
             original_mv.splitlines(keepends=True),

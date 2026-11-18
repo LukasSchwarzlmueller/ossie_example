@@ -31,8 +31,8 @@ wheels = [
 
 [[package]]
 name = "apache-ossie"
-version = "0.2.0.dev0"
-source = { git = "https://github.com/apache/ossie-converters?subdirectory=ossie%2Fpython&rev=811149647ef280b652a03efab112fa937372c21d#811149647ef280b652a03efab112fa937372c21d" }
+version = "0.3.0.dev0"
+source = { git = "https://github.com/apache/ossie-converters?subdirectory=ossie%2Fpython&rev=93fb75c47c294db811ba49e5832c0cb857704306#93fb75c47c294db811ba49e5832c0cb857704306" }
 dependencies = [
     { name = "pydantic" },
     { name = "pyyaml" },
@@ -49,7 +49,7 @@ dependencies = [
 [[package]]
 name = "apache-ossie-dbt"
 version = "0.2.0.dev0"
-source = { git = "https://github.com/apache/ossie-converters?subdirectory=dbt&rev=811149647ef280b652a03efab112fa937372c21d#811149647ef280b652a03efab112fa937372c21d" }
+source = { git = "https://github.com/apache/ossie-converters?subdirectory=dbt&rev=93fb75c47c294db811ba49e5832c0cb857704306#93fb75c47c294db811ba49e5832c0cb857704306" }
 dependencies = [
     { name = "apache-ossie" },
     { name = "jinja2" },
@@ -61,7 +61,7 @@ dependencies = [
 [[package]]
 name = "apache-ossie-microsoft"
 version = "0.2.0.dev0"
-source = { git = "https://github.com/apache/ossie-converters?subdirectory=microsoft&rev=811149647ef280b652a03efab112fa937372c21d#811149647ef280b652a03efab112fa937372c21d" }
+source = { git = "https://github.com/apache/ossie-converters?subdirectory=microsoft&rev=93fb75c47c294db811ba49e5832c0cb857704306#93fb75c47c294db811ba49e5832c0cb857704306" }
 dependencies = [
     { name = "pyyaml" },
     { name = "sqlglot" },
@@ -76,7 +76,7 @@ tom = [
 [[package]]
 name = "apache-ossie-snowflake"
 version = "0.2.0.dev0"
-source = { git = "https://github.com/apache/ossie-converters?subdirectory=snowflake&rev=811149647ef280b652a03efab112fa937372c21d#811149647ef280b652a03efab112fa937372c21d" }
+source = { git = "https://github.com/apache/ossie-converters?subdirectory=snowflake&rev=93fb75c47c294db811ba49e5832c0cb857704306#93fb75c47c294db811ba49e5832c0cb857704306" }
 dependencies = [
     { name = "pyyaml" },
     { name = "sqlglot" },
@@ -881,16 +881,16 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "apache-ossie", git = "https://github.com/apache/ossie-converters?subdirectory=ossie%2Fpython&rev=811149647ef280b652a03efab112fa937372c21d" },
+    { name = "apache-ossie", git = "https://github.com/apache/ossie-converters?subdirectory=ossie%2Fpython&rev=93fb75c47c294db811ba49e5832c0cb857704306" },
     { name = "apache-ossie-databricks", git = "https://github.com/apache/ossie?subdirectory=converters%2Fdatabricks&rev=a5bdbbcd981c3dfb93f99ba8221602e1c3108f8c" },
     { name = "snowflake-connector-python", specifier = ">=4.7.2" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "apache-ossie-dbt", git = "https://github.com/apache/ossie-converters?subdirectory=dbt&rev=811149647ef280b652a03efab112fa937372c21d" },
-    { name = "apache-ossie-microsoft", extras = ["tom"], git = "https://github.com/apache/ossie-converters?subdirectory=microsoft&rev=811149647ef280b652a03efab112fa937372c21d" },
-    { name = "apache-ossie-snowflake", git = "https://github.com/apache/ossie-converters?subdirectory=snowflake&rev=811149647ef280b652a03efab112fa937372c21d" },
+    { name = "apache-ossie-dbt", git = "https://github.com/apache/ossie-converters?subdirectory=dbt&rev=93fb75c47c294db811ba49e5832c0cb857704306" },
+    { name = "apache-ossie-microsoft", extras = ["tom"], git = "https://github.com/apache/ossie-converters?subdirectory=microsoft&rev=93fb75c47c294db811ba49e5832c0cb857704306" },
+    { name = "apache-ossie-snowflake", git = "https://github.com/apache/ossie-converters?subdirectory=snowflake&rev=93fb75c47c294db811ba49e5832c0cb857704306" },
     { name = "databricks-sdk", specifier = ">=0.133.0" },
     { name = "dbt-core", specifier = ">=1.12.5" },
     { name = "dbt-duckdb", specifier = ">=1.11.0" },

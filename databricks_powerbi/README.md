@@ -5,8 +5,7 @@
 by `databricks/export_metric_view.py` and checked byte-for-byte by `roundtrip_databricks/`.
 
 ```bash
-J=.ossie-converters/databricks/java/target/ossie-databricks-converter-0.1.0-SNAPSHOT.jar
-java -jar $J import databricks_powerbi/metric_view.yaml -o databricks_powerbi/db_ossie.yaml
+uv run python -m common.databricks_converter databricks_powerbi/metric_view.yaml -o databricks_powerbi/db_ossie.yaml
 uv run ossie-microsoft export -i databricks_powerbi/db_ossie.yaml -o databricks_powerbi/db_model.bim
 ```
 

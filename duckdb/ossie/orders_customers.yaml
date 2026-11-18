@@ -1,7 +1,7 @@
 # Same sales_demo model as the other targets, with two differences - see README.md:
 #   1. sources are `main.<table>`, where query_metrics.py creates the demo tables
 #   2. ANSI_SQL only, and `customer_name` left as a plain column reference
-version: 0.2.0.dev0
+version: 0.3.0.dev0
 name: sales_demo
 description: Minimal orders/customers demo model for the OSI meetup talk
 datasets:

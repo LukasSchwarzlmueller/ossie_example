@@ -68,7 +68,7 @@ As is (`model_raw.bim`):
 - `total_revenue` (`SUM`) arrives as DAX.
 - `enterprise_revenue` (`FILTER`) becomes `BLANK()`.
 - `revenue_running_total` (window measure) arrives as a plain `SUM`: a wrong number, and the only
-  warning is that the DATABRICKS custom_extensions were dropped.
+  warning is that the DATABRICKS nonportable_extensions were dropped.
 - Relationship skipped: the Metric View has one namespace, so the customers key is named
   `customer_key`; the import keeps that name on the field but writes the physical column
   `customer_id` into the relationship, so Power BI finds no `customers[customer_id]`.

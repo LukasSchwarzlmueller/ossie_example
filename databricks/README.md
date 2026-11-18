@@ -10,8 +10,10 @@ uv run databricks/export_metric_view.py    # add --warnings to see what is dropp
 uv run databricks/deploy_to_databricks.py  # needs DATABRICKS_* in .env
 ```
 
-To update the converter, change `CONVERTERS_REV` in `build_converter.sh`, or point
-`OSSIE_DATABRICKS_JAR` at your own build.
+`CONVERTERS_REV` in `build_converter.sh` is the last upstream commit with the Java converter.
+Upstream replaced it on 2026-11-18 (apache/ossie-converters#218) with a Python converter that writes
+one metric view per dataset, without joins, so this demo's joined view cannot move to it yet. Point
+`OSSIE_DATABRICKS_JAR` at your own build to use another jar.
 
 ```sql
 SELECT customer_segment, MEASURE(total_revenue), MEASURE(avg_order_value), MEASURE(order_count)

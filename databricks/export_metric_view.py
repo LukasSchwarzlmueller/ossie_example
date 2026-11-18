@@ -1,7 +1,7 @@
 """Convert databricks/ossie/orders_customers.yaml to metric_view.yaml.
 
-Uses the Java converter from apache/ossie-converters (the Python one was
-removed upstream). Replaces the model's `__catalog__.__schema__` source placeholder
+Uses the Java converter from apache/ossie-converters, pinned to its last commit
+(see build_converter.sh). Replaces the model's `__catalog__.__schema__` source placeholder
 with DATABRICKS_CATALOG/DATABRICKS_SCHEMA from .env before conversion - see
 NOTES.md. Pass --warnings to see what the converter reports.
 
@@ -11,11 +11,8 @@ point OSSIE_DATABRICKS_JAR at your own build - see README.md.
 
 import argparse
 import os
-import subprocess
-import tempfile
-from pathlib import Path
 
-from common.databricks_converter import find_jar
+from common.databricks_converter import ossie_to_metric_view
 from common.env import REPO_ROOT, load_env_file
 
 INPUT = REPO_ROOT / "databricks" / "ossie" / "orders_customers.yaml"
@@ -31,23 +28,14 @@ def main() -> None:
     args = parser.parse_args()
 
     load_env_file()
-    jar = find_jar()
     catalog = os.environ.get("DATABRICKS_CATALOG", "ossi")
     schema = os.environ.get("DATABRICKS_SCHEMA", "test")
     ossie_yaml = INPUT.read_text().replace(PLACEHOLDER, f"{catalog}.{schema}")
 
-    with tempfile.TemporaryDirectory() as tmp:
-        qualified_input = Path(tmp) / INPUT.name
-        qualified_input.write_text(ossie_yaml)
-        result = subprocess.run(
-            ["java", "-jar", str(jar), "export", str(qualified_input), "-o", str(OUTPUT)],
-            capture_output=True,
-            text=True,
-        )
-    if result.returncode != 0:
-        raise SystemExit(f"converter failed:\n{result.stdout}{result.stderr}")
-    if args.warnings and result.stderr:
-        print(result.stderr)
+    metric_view, messages = ossie_to_metric_view(ossie_yaml)
+    OUTPUT.write_text(metric_view)
+    if args.warnings and messages:
+        print(messages)
     print(f"Wrote {OUTPUT.relative_to(REPO_ROOT)} (qualified for {catalog}.{schema})")
 
 
