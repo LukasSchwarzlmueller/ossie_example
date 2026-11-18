@@ -25,10 +25,11 @@ fixes it needed.
 ## Ossie version
 
 Models are on the unreleased spec `0.3.0.dev0`, with the converters pinned in `pyproject.toml`.
-`databricks/` and `powerbi_databricks/` use upstream's Python Databricks converter. `databricks_to_powerbi/`,
-`databricks_powerbi/` and `roundtrip_databricks/` read joined Metric Views, which only the pinned Java
-converter can do. It still writes the older `custom_extensions` form, which
-`src/common/databricks_converter.py` rewrites as `nonportable_extensions` for the Microsoft converter.
+`databricks/` and `powerbi_databricks/` use upstream's Python Databricks converter. `databricks_to_powerbi/`
+reads joined Metric Views with its own import step, `src/common/metric_view_import.py`.
+`databricks_powerbi/` and `roundtrip_databricks/` still use the pinned Java converter, which writes the older
+`custom_extensions` form; `src/common/databricks_converter.py` rewrites it as `nonportable_extensions` for the
+Microsoft converter.
 
 ## Setup
 

@@ -88,7 +88,8 @@
         "columns": [
           {
             "name": "customer_key",
-            "sourceColumn": "customer_id"
+            "sourceColumn": "customer_id",
+            "isUnique": true
           },
           {
             "name": "customer_segment",
@@ -123,6 +124,15 @@
       }
     ],
     "description": "Orders with customers (Databricks -> Ossie -> Power BI trip)",
+    "relationships": [
+      {
+        "name": "orders_to_customers",
+        "fromTable": "orders",
+        "fromColumn": "customer_id",
+        "toTable": "customers",
+        "toColumn": "customer_key"
+      }
+    ],
     "culture": "en-US"
   }
 }

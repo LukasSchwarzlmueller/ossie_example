@@ -10,7 +10,13 @@ what arrives as is (green), what is lost (red) or wrong (yellow), and what a fix
 | `fixes.yaml` | DAX for the measures that don't translate from SQL |
 | `setup_databricks.py` | creates `customers` / `orders` and the Metric View in Databricks, then queries every measure once |
 | `run_trip.py` | Metric View -> Ossie -> fixes -> Power BI (-> Fabric) and the summary |
+| `../src/common/metric_view_import.py` | the Metric View -> Ossie step: tables, relationship, measures |
 | `output/` | written by `run_trip.py`: `ossie.yaml`, `ossie_fixed.yaml`, `model_raw.bim`, `model.bim` |
+
+Upstream's Python converter wraps a Metric View as one opaque table, and its Java converter is gone,
+so this demo has its own import step. It needs no JDK. It stops with an error on what it cannot map:
+nested or `one_to_many` joins, join conditions other than equal columns, wildcards, SQL query sources,
+and dimensions that read more than one table.
 
 ## Before the talk
 
@@ -69,9 +75,8 @@ As is (`model_raw.bim`):
 - `enterprise_revenue` (`FILTER`) becomes `BLANK()`.
 - `revenue_running_total` (window measure) arrives as a plain `SUM`: a wrong number, and the only
   warning is that the DATABRICKS nonportable_extensions were dropped.
-- Relationship skipped: the Metric View has one namespace, so the customers key is named
-  `customer_key`; the import keeps that name on the field but writes the physical column
-  `customer_id` into the relationship, so Power BI finds no `customers[customer_id]`.
+- The relationship arrives: the import points it at the field that reads the join column
+  (`customer_key`).
 - No column types: a Metric View has none, so the Ossie fields have no `datatype` and the columns
   no `dataType`. Fabric refuses such a Direct Lake model (`RequiredOptionsMissing` /
   `allowPurgeData`), so the raw model (`--raw`) can't be uploaded.
@@ -80,7 +85,6 @@ As is (`model_raw.bim`):
 Fixed (`model.bim`), all in the Ossie file between the two converters, converters unchanged:
 - DAX from `fixes.yaml` as a second dialect (the intended Ossie way): the two measures work in
   Power BI, Databricks keeps reading the SQL
-- relationship and unique key point at the field (`customer_key`): a workaround for the importer
 - column types from `fixes.yaml` (`datatypes`) as Ossie `datatype` on each field
 - `enterprise_revenue` uses `KEEPFILTERS`: a plain `CALCULATE` filter replaces the segment
   filter, so `smb` would show the enterprise total instead of empty (Databricks: `NULL`)
@@ -89,5 +93,6 @@ After the upload, `run_trip.py` refreshes the model (Direct Lake framing); befor
 fail with "Cannot find table".
 
 Reuses `Fabric`, `get_token` and `fabric_glue` from `roundtrip_powerbi/run_fabric_roundtrip.py`.
-Tested live (2026-11-13): Metric View in Databricks, upload + refresh in Fabric; the three
-measures return the same numbers in Fabric as in Databricks.
+Tested live (2026-11-13, with the Java import): Metric View in Databricks, upload + refresh in Fabric;
+the three measures return the same numbers in Fabric as in Databricks. The own import step produces
+the same `model.bim`.

@@ -23,7 +23,7 @@ datasets:
 - name: customers
   source: ossie.dbo.customers
   unique_keys:
-  - - customer_id
+  - - customer_key
   fields:
   - name: customer_key
     expression:
@@ -43,7 +43,7 @@ relationships:
   from_columns:
   - customer_id
   to_columns:
-  - customer_id
+  - customer_key
   nonportable_extensions:
   - vendor_name: DATABRICKS
     data:

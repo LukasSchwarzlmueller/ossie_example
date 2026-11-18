@@ -1,7 +1,7 @@
 """The whole trip: Databricks Metric View -> Ossie -> Power BI (-> Fabric), red/green per object.
 
   0. pull the Metric View definition from Databricks (SHOW CREATE TABLE) -> output/metric_view.yaml
-  1. Metric View -> output/ossie.yaml               Java Databricks converter (import)
+  1. Metric View -> output/ossie.yaml               common/metric_view_import.py
   2. "mirroring": dataset sources Unity Catalog -> OneLake lakehouse (only the names change)
   3. fixes in Ossie -> output/ossie_fixed.yaml       see FIXES below
   4. both Ossie files -> Power BI                    output/model_raw.bim, output/model.bim
@@ -15,8 +15,6 @@ The summary shows, per measure, column and relationship, what arrives as is (gre
 lost (red) or arrives with a wrong value (yellow), and below it what the fix in Ossie gets back.
 
 FIXES - everything happens in the Ossie file, the converters stay as they are:
-  - relationship keys: the Databricks import writes the physical column (customer_id) into the
-    relationship, but the field is named customer_key -> point the relationship at the field
   - DAX from fixes.yaml as a second dialect for measures that don't translate from SQL
   - Databricks `format` (kept in nonportable_extensions) -> Power BI formatString
   - column types from fixes.yaml: a Metric View has none, and Fabric refuses the model without
@@ -47,8 +45,8 @@ import yaml
 
 from ossie_microsoft import convert_ossie_to_semantic_model
 
-from common.databricks_converter import metric_view_to_ossie, to_nonportable_extensions
 from common.env import REPO_ROOT, load_env_file
+from common.metric_view_import import metric_view_to_ossie
 
 HERE = REPO_ROOT / "databricks_to_powerbi"
 OUT = HERE / "output"
@@ -461,12 +459,13 @@ def main() -> None:
     joins = len(view.get("joins", []))
     print(paint("2", f"     {len(view.get('measures', []))} measures · {len(view.get('dimensions', []))} columns · "
                      f"{joins} join{'s' if joins != 1 else ''}"))
-    print("  ② Databricks -> Ossie                  " + paint("2", "Databricks converter"))
-    ossie_text, _ = metric_view_to_ossie(view_yaml)
+    print("  ② Databricks -> Ossie                  " + paint("2", "own import step"))
+    raw_ossie = metric_view_to_ossie(view_yaml)
 
     # 2. "Mirroring": same tables, now read from OneLake
-    ossie_text = ossie_text.replace(f'"{uc}.', f'"{onelake}.')
-    raw_ossie = to_nonportable_extensions(yaml.safe_load(ossie_text))
+    for dataset in raw_ossie["datasets"]:
+        if dataset["source"].startswith(f"{uc}."):
+            dataset["source"] = onelake + dataset["source"][len(uc):]
     (OUT / "ossie.yaml").write_text(yaml.safe_dump(raw_ossie, sort_keys=False, allow_unicode=True))
 
     # 3. Fixes in Ossie
