@@ -23,9 +23,9 @@ datasets:
 - name: customers
   source: ossie.dbo.customers
   unique_keys:
-  - - customer_key
+  - - customer_id
   fields:
-  - name: customer_key
+  - name: customer_id
     expression:
       dialects:
       - dialect: OSSIE_SQL_2026
@@ -43,7 +43,7 @@ relationships:
   from_columns:
   - customer_id
   to_columns:
-  - customer_key
+  - customer_id
   nonportable_extensions:
   - vendor_name: DATABRICKS
     data:

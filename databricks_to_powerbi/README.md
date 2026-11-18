@@ -75,8 +75,9 @@ As is (`model_raw.bim`):
 - `enterprise_revenue` (`FILTER`) becomes `BLANK()`.
 - `revenue_running_total` (window measure) arrives as a plain `SUM`: a wrong number, and the only
   warning is that the DATABRICKS nonportable_extensions were dropped.
-- The relationship arrives: the import points it at the field that reads the join column
-  (`customer_key`).
+- The relationship arrives. The Metric View calls the customers key `customer_key` because its
+  dimension names must be unique, and the import gives the field its real column name back, so
+  Power BI gets `orders[customer_id] -> customers[customer_id]`. Databricks is not changed.
 - No column types: a Metric View has none, so the Ossie fields have no `datatype` and the columns
   no `dataType`. Fabric refuses such a Direct Lake model (`RequiredOptionsMissing` /
   `allowPurgeData`), so the raw model (`--raw`) can't be uploaded.
@@ -94,5 +95,5 @@ fail with "Cannot find table".
 
 Reuses `Fabric`, `get_token` and `fabric_glue` from `roundtrip_powerbi/run_fabric_roundtrip.py`.
 Tested live (2026-11-13, with the Java import): Metric View in Databricks, upload + refresh in Fabric;
-the three measures return the same numbers in Fabric as in Databricks. The own import step produces
-the same `model.bim`.
+the three measures return the same numbers in Fabric as in Databricks. The own import step has not been
+uploaded yet; its `model.bim` differs from that run only in the customers key name.

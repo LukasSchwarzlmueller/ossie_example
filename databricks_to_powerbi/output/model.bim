@@ -72,7 +72,7 @@
         "name": "customers",
         "columns": [
           {
-            "name": "customer_key",
+            "name": "customer_id",
             "sourceColumn": "customer_id",
             "dataType": "int64",
             "isUnique": true
@@ -117,7 +117,7 @@
         "fromTable": "orders",
         "fromColumn": "customer_id",
         "toTable": "customers",
-        "toColumn": "customer_key"
+        "toColumn": "customer_id"
       }
     ],
     "culture": "en-US"

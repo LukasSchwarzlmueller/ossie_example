@@ -17,5 +17,4 @@ datatypes:
   customer_id: Integer
   order_date: Date
   order_amount: Decimal
-  customer_key: Integer
   customer_segment: String

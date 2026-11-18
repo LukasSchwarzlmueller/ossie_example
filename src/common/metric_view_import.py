@@ -5,6 +5,9 @@ to build a model from. This step reads the Metric View YAML itself: the source a
 a dataset, each join a relationship, each dimension a field of the table it reads, each measure a
 model metric. What Ossie has no field for (format, window, ...) goes into a DATABRICKS extension.
 
+A Metric View has one namespace, so a join key is often exposed under another name (customer_key for
+customers.customer_id). Ossie fields belong to one table, so a join key gets its real column name back.
+
 Anything it cannot map faithfully stops with an error: nested or one_to_many joins, join conditions
 other than equal columns, wildcards, and dimensions that read more than one table.
 """
@@ -120,18 +123,25 @@ def _metric(measure: dict, fact: str, view_is_filtered: bool) -> dict:
     return metric | _extension(_stash(measure, ("format", "window", "partition", "display_name")))
 
 
-def _key_fields(columns: list[str], dataset: dict) -> list[str]:
-    """The fields that read these columns. Keys and relationships name fields, not columns."""
+def _is_used_by_measures(name: str, measures: list[dict]) -> bool:
+    return any(re.search(rf"\b{re.escape(name)}\b", f"{m['expr']} {m.get('window', '')}") for m in measures)
+
+
+def _key_fields(columns: list[str], dataset: dict, measures: list[dict]) -> list[str]:
+    """The fields that read these columns, named after the column wherever that is safe."""
     names = []
     for column in columns:
         fields = dataset["fields"]
-        match = next((f["name"] for f in fields if f["expression"]["dialects"][0]["expression"] == column), None)
+        taken = any(f["name"] == column for f in fields)
+        match = next((f for f in fields if f["expression"]["dialects"][0]["expression"] == column), None)
         if match is None:  # the view joins on a column it doesn't expose
-            if any(f["name"] == column for f in fields):
+            if taken:
                 raise MetricViewImportError(f"dataset '{dataset['name']}': field '{column}' hides the join column")
-            fields.append({"name": column, "expression": _expression(column, PORTABLE)})
-            match = column
-        names.append(match)
+            match = {"name": column, "expression": _expression(column, PORTABLE)}
+            fields.append(match)
+        elif not taken and not _is_used_by_measures(match["name"], measures):
+            match["name"] = column
+        names.append(match["name"])
     return names
 
 
@@ -162,11 +172,12 @@ def metric_view_to_ossie(metric_view_yaml: str) -> dict:
         dataset, expr = _dataset_of(dimension, fact, joined)
         datasets[dataset]["fields"].append(_field(dimension, expr))
 
+    measures = view.get("measures") or []
     relationships = []
     for join in joins:
         child = join["name"]
         fact_columns, child_columns = _join_columns(join, child)
-        to_columns = _key_fields(child_columns, datasets[child])
+        to_columns = _key_fields(child_columns, datasets[child], measures)
         if (join.get("rely") or {}).get("at_most_one_match"):
             datasets[child] = {
                 "name": child,
@@ -178,7 +189,7 @@ def metric_view_to_ossie(metric_view_yaml: str) -> dict:
             "name": f"{fact}_to_{child}",
             "from": fact,
             "to": child,
-            "from_columns": _key_fields(fact_columns, datasets[fact]),
+            "from_columns": _key_fields(fact_columns, datasets[fact], measures),
             "to_columns": to_columns,
         } | _extension(_stash(join, ("rely", "cardinality", "on"))))
 
@@ -188,7 +199,6 @@ def metric_view_to_ossie(metric_view_yaml: str) -> dict:
     model["datasets"] = list(datasets.values())
     if relationships:
         model["relationships"] = relationships
-    measures = view.get("measures") or []
     if measures:
         model["metrics"] = [_metric(measure, fact, "filter" in view) for measure in measures]
     return model | _extension(_stash(view, ("filter", "parameters", "materialization")))
